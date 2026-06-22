@@ -1,0 +1,346 @@
+{
+  "candidates": [
+    {
+      "candidate_id": "C001",
+      "name": "Arjun Mehta",
+      "summary": "7 years building ML systems at product startups. Strong in Python, PyTorch, embeddings-based retrieval, and Pinecone. Shipped a FAISS-based resume matching system at current company. Active open-source contributor to HuggingFace.",
+      "profile": {
+        "years_of_experience": 7,
+        "location": "Pune",
+        "willing_to_relocate": false,
+        "current_industry": "HR-tech",
+        "education_tier": "tier1"
+      },
+      "skills": [
+        {"name": "Python", "proficiency": "expert", "years": 7},
+        {"name": "PyTorch", "proficiency": "advanced", "years": 4},
+        {"name": "embeddings-based retrieval", "proficiency": "advanced", "years": 3},
+        {"name": "vector databases", "proficiency": "advanced", "years": 3},
+        {"name": "Pinecone", "proficiency": "advanced", "years": 2},
+        {"name": "FAISS", "proficiency": "expert", "years": 3},
+        {"name": "FastAPI", "proficiency": "advanced", "years": 3},
+        {"name": "LLM integration", "proficiency": "intermediate", "years": 2},
+        {"name": "evaluation frameworks", "proficiency": "intermediate", "years": 2},
+        {"name": "information retrieval", "proficiency": "advanced", "years": 4}
+      ],
+      "career_history": [
+        {"company": "TalentAI", "title": "Senior ML Engineer", "duration_months": 36, "company_type": "product", "company_size": "startup"},
+        {"company": "Groww", "title": "ML Engineer", "duration_months": 36, "company_type": "product", "company_size": "large"}
+      ],
+      "redrob_signals": {
+        "open_to_work_flag": true,
+        "profile_completeness_score": 0.95,
+        "recruiter_response_rate": 0.9,
+        "interview_completion_rate": 0.95,
+        "notice_period_days": 30,
+        "last_active_days_ago": 2
+      }
+    },
+    {
+      "candidate_id": "C002",
+      "name": "Priya Sharma",
+      "summary": "9 years in ML at FAANG and top product companies. Expert in NLP, hybrid search, and production ranking systems. Built the search ranking layer at Flipkart AI. Strong on evaluation frameworks (NDCG/MRR). Published 3 papers on information retrieval.",
+      "profile": {
+        "years_of_experience": 9,
+        "location": "Bangalore",
+        "willing_to_relocate": true,
+        "current_industry": "e-commerce",
+        "education_tier": "tier1"
+      },
+      "skills": [
+        {"name": "Python", "proficiency": "expert", "years": 9},
+        {"name": "NLP", "proficiency": "expert", "years": 7},
+        {"name": "information retrieval", "proficiency": "expert", "years": 6},
+        {"name": "hybrid search", "proficiency": "expert", "years": 4},
+        {"name": "evaluation frameworks", "proficiency": "expert", "years": 5},
+        {"name": "vector databases", "proficiency": "advanced", "years": 3},
+        {"name": "embeddings-based retrieval", "proficiency": "expert", "years": 4},
+        {"name": "learning-to-rank", "proficiency": "advanced", "years": 3},
+        {"name": "A/B testing", "proficiency": "expert", "years": 5},
+        {"name": "distributed systems", "proficiency": "intermediate", "years": 3}
+      ],
+      "career_history": [
+        {"company": "Flipkart", "title": "Staff ML Engineer", "duration_months": 42, "company_type": "product", "company_size": "large"},
+        {"company": "Google", "title": "Senior SWE", "duration_months": 36, "company_type": "FAANG", "company_size": "enterprise"}
+      ],
+      "redrob_signals": {
+        "open_to_work_flag": true,
+        "profile_completeness_score": 0.98,
+        "recruiter_response_rate": 0.85,
+        "interview_completion_rate": 0.9,
+        "notice_period_days": 60,
+        "last_active_days_ago": 5
+      }
+    },
+    {
+      "candidate_id": "C003",
+      "name": "Rahul Verma",
+      "summary": "5 years at TCS and Infosys building Java microservices. Limited ML exposure. Took online courses in Python and ML but no production deployment. Mostly consulting and integration projects.",
+      "profile": {
+        "years_of_experience": 5,
+        "location": "Mumbai",
+        "willing_to_relocate": false,
+        "current_industry": "IT consulting",
+        "education_tier": "tier2"
+      },
+      "skills": [
+        {"name": "Java", "proficiency": "expert", "years": 5},
+        {"name": "Python", "proficiency": "beginner", "years": 1},
+        {"name": "Spring Boot", "proficiency": "advanced", "years": 4},
+        {"name": "REST APIs", "proficiency": "advanced", "years": 5},
+        {"name": "SQL", "proficiency": "advanced", "years": 5}
+      ],
+      "career_history": [
+        {"company": "Infosys", "title": "Senior Associate", "duration_months": 36, "company_type": "consulting", "company_size": "enterprise"},
+        {"company": "TCS", "title": "Systems Engineer", "duration_months": 24, "company_type": "consulting", "company_size": "enterprise"}
+      ],
+      "redrob_signals": {
+        "open_to_work_flag": true,
+        "profile_completeness_score": 0.7,
+        "recruiter_response_rate": 0.6,
+        "interview_completion_rate": 0.5,
+        "notice_period_days": 90,
+        "last_active_days_ago": 15
+      }
+    },
+    {
+      "candidate_id": "C004",
+      "name": "Sneha Kulkarni",
+      "summary": "6 years in ML at product companies. Deep expertise in NLP, transformer fine-tuning (LoRA/QLoRA), and LLM deployment. Built RAG pipelines and semantic search at MakeMyTrip. Strong communicator, enjoys writing design docs.",
+      "profile": {
+        "years_of_experience": 6,
+        "location": "Noida",
+        "willing_to_relocate": false,
+        "current_industry": "travel-tech",
+        "education_tier": "tier1"
+      },
+      "skills": [
+        {"name": "Python", "proficiency": "expert", "years": 6},
+        {"name": "NLP", "proficiency": "expert", "years": 5},
+        {"name": "transformer fine-tuning", "proficiency": "advanced", "years": 3},
+        {"name": "LoRA", "proficiency": "advanced", "years": 2},
+        {"name": "QLoRA", "proficiency": "advanced", "years": 2},
+        {"name": "RAG", "proficiency": "expert", "years": 3},
+        {"name": "LLM integration", "proficiency": "expert", "years": 3},
+        {"name": "embeddings-based retrieval", "proficiency": "advanced", "years": 3},
+        {"name": "vector databases", "proficiency": "advanced", "years": 2},
+        {"name": "evaluation frameworks", "proficiency": "intermediate", "years": 2}
+      ],
+      "career_history": [
+        {"company": "MakeMyTrip", "title": "ML Engineer II", "duration_months": 36, "company_type": "product", "company_size": "large"},
+        {"company": "Juspay", "title": "Data Scientist", "duration_months": 36, "company_type": "product", "company_size": "mid"}
+      ],
+      "redrob_signals": {
+        "open_to_work_flag": true,
+        "profile_completeness_score": 0.92,
+        "recruiter_response_rate": 0.88,
+        "interview_completion_rate": 0.92,
+        "notice_period_days": 45,
+        "last_active_days_ago": 3
+      }
+    },
+    {
+      "candidate_id": "C005",
+      "name": "Dr. Vikram Nair",
+      "summary": "PhD in Computer Vision from IISc. 8 years in computer vision research. Expert in image segmentation and object detection. Limited NLP or text-based ML experience. No production ML deployment — primarily academic research.",
+      "profile": {
+        "years_of_experience": 8,
+        "location": "Bangalore",
+        "willing_to_relocate": true,
+        "current_industry": "academia",
+        "education_tier": "tier1"
+      },
+      "skills": [
+        {"name": "Python", "proficiency": "advanced", "years": 8},
+        {"name": "computer vision", "proficiency": "expert", "years": 8},
+        {"name": "image segmentation", "proficiency": "expert", "years": 6},
+        {"name": "PyTorch", "proficiency": "expert", "years": 5},
+        {"name": "TensorFlow", "proficiency": "advanced", "years": 4},
+        {"name": "object detection", "proficiency": "expert", "years": 6}
+      ],
+      "career_history": [
+        {"company": "IISc", "title": "Research Scientist", "duration_months": 60, "company_type": "research", "company_size": "large"},
+        {"company": "DRDO", "title": "Scientist B", "duration_months": 36, "company_type": "research", "company_size": "enterprise"}
+      ],
+      "redrob_signals": {
+        "open_to_work_flag": true,
+        "profile_completeness_score": 0.8,
+        "recruiter_response_rate": 0.7,
+        "interview_completion_rate": 0.75,
+        "notice_period_days": 30,
+        "last_active_days_ago": 20
+      }
+    },
+    {
+      "candidate_id": "C006",
+      "name": "Aditya Krishnan",
+      "summary": "5 years at product startups. Strong in Python, ML pipelines, and data engineering. Some experience with Elasticsearch for search but no vector databases or embedding models. Good foundational ML but no NLP specialization.",
+      "profile": {
+        "years_of_experience": 5,
+        "location": "Hyderabad",
+        "willing_to_relocate": true,
+        "current_industry": "fintech",
+        "education_tier": "tier2"
+      },
+      "skills": [
+        {"name": "Python", "proficiency": "advanced", "years": 5},
+        {"name": "scikit-learn", "proficiency": "advanced", "years": 4},
+        {"name": "data engineering", "proficiency": "advanced", "years": 3},
+        {"name": "Elasticsearch", "proficiency": "intermediate", "years": 2},
+        {"name": "Airflow", "proficiency": "advanced", "years": 3},
+        {"name": "SQL", "proficiency": "expert", "years": 5},
+        {"name": "Spark", "proficiency": "intermediate", "years": 2}
+      ],
+      "career_history": [
+        {"company": "Slice", "title": "Data Scientist", "duration_months": 36, "company_type": "product", "company_size": "startup"},
+        {"company": "Pine Labs", "title": "ML Engineer", "duration_months": 24, "company_type": "product", "company_size": "mid"}
+      ],
+      "redrob_signals": {
+        "open_to_work_flag": true,
+        "profile_completeness_score": 0.82,
+        "recruiter_response_rate": 0.75,
+        "interview_completion_rate": 0.8,
+        "notice_period_days": 30,
+        "last_active_days_ago": 7
+      }
+    },
+    {
+      "candidate_id": "C007",
+      "name": "Meera Iyer",
+      "summary": "8 years in product roles at AI-first companies. Transitioned from software engineering to ML. Expert in Python, NLP, embeddings, and building full ML pipelines from research to production. Led the ranking team at a HR-tech startup. Strong bias for shipping.",
+      "profile": {
+        "years_of_experience": 8,
+        "location": "Pune",
+        "willing_to_relocate": false,
+        "current_industry": "HR-tech",
+        "education_tier": "tier1"
+      },
+      "skills": [
+        {"name": "Python", "proficiency": "expert", "years": 8},
+        {"name": "NLP", "proficiency": "expert", "years": 6},
+        {"name": "embeddings-based retrieval", "proficiency": "expert", "years": 4},
+        {"name": "vector databases", "proficiency": "expert", "years": 3},
+        {"name": "production ML deployment", "proficiency": "expert", "years": 5},
+        {"name": "evaluation frameworks", "proficiency": "advanced", "years": 4},
+        {"name": "LLM integration", "proficiency": "advanced", "years": 2},
+        {"name": "A/B testing", "proficiency": "advanced", "years": 5},
+        {"name": "information retrieval", "proficiency": "advanced", "years": 4},
+        {"name": "open-source contributions", "proficiency": "intermediate", "years": 3}
+      ],
+      "career_history": [
+        {"company": "Redrob", "title": "Lead AI Engineer", "duration_months": 30, "company_type": "product", "company_size": "startup"},
+        {"company": "Unacademy", "title": "Senior ML Engineer", "duration_months": 42, "company_type": "product", "company_size": "large"}
+      ],
+      "redrob_signals": {
+        "open_to_work_flag": true,
+        "profile_completeness_score": 0.97,
+        "recruiter_response_rate": 0.95,
+        "interview_completion_rate": 0.95,
+        "notice_period_days": 30,
+        "last_active_days_ago": 1
+      }
+    },
+    {
+      "candidate_id": "C008",
+      "name": "Karan Bhatt",
+      "summary": "3 years experience in ML, mostly data science and analytics. Good Python skills but limited experience with NLP or production ML systems. Currently doing a part-time ML course. Eager to learn.",
+      "profile": {
+        "years_of_experience": 3,
+        "location": "Delhi NCR",
+        "willing_to_relocate": false,
+        "current_industry": "analytics",
+        "education_tier": "tier2"
+      },
+      "skills": [
+        {"name": "Python", "proficiency": "intermediate", "years": 3},
+        {"name": "pandas", "proficiency": "advanced", "years": 3},
+        {"name": "scikit-learn", "proficiency": "intermediate", "years": 2},
+        {"name": "Tableau", "proficiency": "advanced", "years": 3},
+        {"name": "SQL", "proficiency": "advanced", "years": 3}
+      ],
+      "career_history": [
+        {"company": "Delloite", "title": "Data Analyst", "duration_months": 36, "company_type": "consulting", "company_size": "enterprise"}
+      ],
+      "redrob_signals": {
+        "open_to_work_flag": true,
+        "profile_completeness_score": 0.65,
+        "recruiter_response_rate": 0.8,
+        "interview_completion_rate": 0.7,
+        "notice_period_days": 15,
+        "last_active_days_ago": 3
+      }
+    },
+    {
+      "candidate_id": "C009",
+      "name": "Rohit Gupta",
+      "summary": "10 years in ML and search at large product companies. Built recommendation and retrieval systems at Amazon and Swiggy. Expert in ranking algorithms, A/B testing, and hybrid retrieval. Strong on distributed systems. Has mentored teams of 5+ engineers.",
+      "profile": {
+        "years_of_experience": 10,
+        "location": "Mumbai",
+        "willing_to_relocate": true,
+        "current_industry": "e-commerce",
+        "education_tier": "tier1"
+      },
+      "skills": [
+        {"name": "Python", "proficiency": "expert", "years": 10},
+        {"name": "information retrieval", "proficiency": "expert", "years": 8},
+        {"name": "recommendation systems", "proficiency": "expert", "years": 7},
+        {"name": "A/B testing", "proficiency": "expert", "years": 7},
+        {"name": "distributed systems", "proficiency": "expert", "years": 6},
+        {"name": "embeddings-based retrieval", "proficiency": "expert", "years": 4},
+        {"name": "vector databases", "proficiency": "advanced", "years": 3},
+        {"name": "NLP", "proficiency": "advanced", "years": 4},
+        {"name": "evaluation frameworks", "proficiency": "expert", "years": 5},
+        {"name": "learning-to-rank", "proficiency": "advanced", "years": 4}
+      ],
+      "career_history": [
+        {"company": "Swiggy", "title": "Principal ML Engineer", "duration_months": 36, "company_type": "product", "company_size": "large"},
+        {"company": "Amazon", "title": "SDE II", "duration_months": 48, "company_type": "FAANG", "company_size": "enterprise"}
+      ],
+      "redrob_signals": {
+        "open_to_work_flag": false,
+        "profile_completeness_score": 0.9,
+        "recruiter_response_rate": 0.7,
+        "interview_completion_rate": 0.8,
+        "notice_period_days": 90,
+        "last_active_days_ago": 30
+      }
+    },
+    {
+      "candidate_id": "C010",
+      "name": "Ananya Patel",
+      "summary": "6 years in NLP and conversational AI at product companies. Expert in transformer models, semantic search, and RAG. Deployed several LLM-powered products in production at Ola and Paytm. Strong writer, very responsive.",
+      "profile": {
+        "years_of_experience": 6,
+        "location": "Delhi NCR",
+        "willing_to_relocate": false,
+        "current_industry": "fintech",
+        "education_tier": "tier1"
+      },
+      "skills": [
+        {"name": "Python", "proficiency": "expert", "years": 6},
+        {"name": "NLP", "proficiency": "expert", "years": 6},
+        {"name": "semantic search", "proficiency": "expert", "years": 4},
+        {"name": "RAG", "proficiency": "expert", "years": 3},
+        {"name": "LLM integration", "proficiency": "expert", "years": 3},
+        {"name": "transformer fine-tuning", "proficiency": "advanced", "years": 3},
+        {"name": "embeddings-based retrieval", "proficiency": "advanced", "years": 3},
+        {"name": "vector databases", "proficiency": "advanced", "years": 2},
+        {"name": "production ML deployment", "proficiency": "advanced", "years": 4},
+        {"name": "evaluation frameworks", "proficiency": "intermediate", "years": 2}
+      ],
+      "career_history": [
+        {"company": "Paytm", "title": "ML Engineer II", "duration_months": 30, "company_type": "product", "company_size": "large"},
+        {"company": "Ola", "title": "NLP Engineer", "duration_months": 42, "company_type": "product", "company_size": "large"}
+      ],
+      "redrob_signals": {
+        "open_to_work_flag": true,
+        "profile_completeness_score": 0.94,
+        "recruiter_response_rate": 0.92,
+        "interview_completion_rate": 0.9,
+        "notice_period_days": 30,
+        "last_active_days_ago": 4
+      }
+    }
+  ]
+}

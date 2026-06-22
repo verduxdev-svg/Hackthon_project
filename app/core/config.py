@@ -16,24 +16,32 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str
 
     # ── Model Configuration ───────────────────────────────────
-    # llama-3.3-70b-versatile is the current production-ready 70B model on Groq.
-    # It has the best reasoning for structured extraction tasks.
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    # llama-3.3-70b-versatile: best reasoning for structured extraction.
+    # llama-3.1-8b-instant: ~5× faster, sufficient for extraction.
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
 
     # Low temperature keeps extraction deterministic and factual.
     LLM_TEMPERATURE: float = 0.05
 
     # Maximum tokens for the LLM response. The JSON output should
     # always fit comfortably within 1024 tokens.
-    LLM_MAX_TOKENS: int = 1500
+    LLM_MAX_TOKENS: int = 1200
+
+    # ── Ranking Configuration ─────────────────────────────────
+    # Path to the candidates JSON dataset (relative to project root)
+    CANDIDATES_FILE: str = "data/sample_candidates.json"
+
+    # Number of candidates to include in the shortlist
+    SHORTLIST_SIZE: int = 10
 
     # ── App Configuration ─────────────────────────────────────
-    APP_TITLE: str = "Phase 1: AI Recruiter — JD Intelligence Extractor"
+    APP_TITLE: str = "AI Recruiter — JD Intelligence + Candidate Ranking"
     APP_DESCRIPTION: str = (
-        "Transforms raw, noisy Job Description text into a clean, "
-        "validated JSON object ready for Phase 2 candidate ranking."
+        "End-to-end AI recruiter pipeline: Transforms raw Job Description text into "
+        "structured signals, then ranks candidates the way a great recruiter would — "
+        "understanding who actually fits, not just matching keywords."
     )
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "2.0.0"
 
     # ── CORS Configuration (for React frontend) ───────────────
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173", "*"]

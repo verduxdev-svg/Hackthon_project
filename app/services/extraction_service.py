@@ -1,41 +1,33 @@
 """
-The JD Extraction Service — the core intelligence of Phase 1.
+The JD Extraction Service — Phase 1 Intelligence Core.
 
-This module handles:
-1. Building the surgical extraction prompt (tuned to the actual JD dataset)
-2. Calling the Groq API with JSON-mode enforced
-3. Post-processing and validating the LLM's response
-4. Graceful error handling with meaningful messages
+Fixes applied:
+1. Uses AsyncGroq (non-blocking) instead of sync Groq client.
+2. In-memory MD5-keyed cache prevents redundant Groq calls for identical JDs.
+3. Service is instantiated ONCE (singleton in app state) — no per-request overhead.
 """
 
 import json
+import hashlib
 import logging
-from groq import Groq, APIConnectionError, APIStatusError
+import asyncio
+from groq import AsyncGroq, APIConnectionError, APIStatusError
 
 from app.core.config import get_settings
 from app.models.jd_models import JDExtractionResult
 
 logger = logging.getLogger(__name__)
 
+# ─────────────────────────────────────────────────────────────
+# In-memory JD extraction cache
+# Key: MD5 of raw JD text  |  Value: validated JDExtractionResult
+# ─────────────────────────────────────────────────────────────
+_jd_cache: dict[str, JDExtractionResult] = {}
+
 
 # ─────────────────────────────────────────────────────────────
 # SYSTEM PROMPT — The Heart of Phase 1
 # ─────────────────────────────────────────────────────────────
-#
-# This prompt is carefully engineered based on our analysis of:
-# - The actual JD structure (job_description.docx)
-# - The candidate dataset schema (sample_candidates.json)
-# - The hackathon's explicit hint: "keyword matching is the trap"
-#
-# Key design decisions:
-# 1. We extract DISQUALIFIERS explicitly — the JD has a full section on them.
-# 2. We separate must-have vs nice-to-have skills as clearly distinct lists.
-# 3. We extract logistical signals (location, notice period) for Phase 2 filtering.
-# 4. We prompt the model to look for IMPLICIT behavioral signals, not just
-#    keyword lists. This aligns with the hackathon's requirement to rank
-#    by intent, not just skill-name presence.
-# ─────────────────────────────────────────────────────────────
-
 SYSTEM_PROMPT = """
 You are an expert Technical Recruiter and Intelligence Extraction System.
 Your task is to parse a raw Job Description (JD) and extract ALL meaningful
@@ -46,20 +38,20 @@ CRITICAL RULES:
 2. Extract skills into TWO distinct categories:
    - must_have_skills: Non-negotiable. Absence = candidate should be rejected.
    - nice_to_have_skills: Preferred but not blockers.
-3. For minimum_years_experience: if a range is given (e.g., "5-9 years"), 
+3. For minimum_years_experience: if a range is given (e.g., "5-9 years"),
    use the LOWER bound as an integer.
-4. Behavioral traits: Look for culture/work-style signals (e.g., "bias for action", 
+4. Behavioral traits: Look for culture/work-style signals (e.g., "bias for action",
    "async-first", "comfortable with ambiguity"). These are often implicit.
-5. Disqualifiers: Extract EXPLICIT anti-patterns mentioned in the JD 
+5. Disqualifiers: Extract EXPLICIT anti-patterns mentioned in the JD
    (e.g., "no consulting-only backgrounds", "no pure research roles").
-   These are CRITICAL for accurate ranking — most JDs don't have them but when 
+   These are CRITICAL for accurate ranking — most JDs don't have them but when
    they do, they are the strongest signal of all.
-6. Domain knowledge: Areas of expertise beyond named technologies 
+6. Domain knowledge: Areas of expertise beyond named technologies
    (e.g., "information retrieval", "A/B testing", "marketplace dynamics").
-7. preferred_company_types: If the JD mentions preferring or penalizing 
+7. preferred_company_types: If the JD mentions preferring or penalizing
    certain company types (product vs consulting vs FAANG), extract them.
 8. remote_ok: Set to true only if the JD explicitly says remote or WFH is OK.
-9. extraction_confidence: Set to "high" if the JD is detailed, 
+9. extraction_confidence: Set to "high" if the JD is detailed,
    "medium" if ambiguous, "low" if very vague.
 
 OUTPUT JSON SCHEMA (return EXACTLY this structure):
@@ -89,33 +81,40 @@ OUTPUT JSON SCHEMA (return EXACTLY this structure):
 class JDExtractionService:
     """
     Encapsulates all logic for the JD → structured JSON extraction pipeline.
-    
-    Instantiated once at app startup and reused across requests (no per-request
-    client creation overhead).
+
+    Instantiated ONCE at app startup via lifespan and stored in app.state.
+    Uses AsyncGroq so it never blocks FastAPI's event loop.
     """
 
     def __init__(self):
         self.settings = get_settings()
-        self.client = Groq(api_key=self.settings.GROQ_API_KEY)
+        # AsyncGroq: non-blocking — critical for FastAPI concurrency
+        self.client = AsyncGroq(api_key=self.settings.GROQ_API_KEY)
         logger.info(f"JDExtractionService initialized | model={self.settings.GROQ_MODEL}")
 
     async def extract(self, raw_jd_text: str) -> JDExtractionResult:
         """
-        Main extraction pipeline.
-        
+        Main extraction pipeline with in-memory caching.
+
         Args:
             raw_jd_text: The raw, unstructured job description text.
-            
+
         Returns:
             A validated JDExtractionResult Pydantic model.
-            
+
         Raises:
             ValueError: If the LLM response cannot be parsed or validated.
             RuntimeError: If the Groq API call fails.
         """
-        logger.info(f"Starting JD extraction | text_length={len(raw_jd_text)}")
+        # ── Cache check ───────────────────────────────────────
+        cache_key = hashlib.md5(raw_jd_text.strip().encode()).hexdigest()
+        if cache_key in _jd_cache:
+            logger.info(f"Cache HIT for JD (md5={cache_key[:8]}...) — skipping Groq call")
+            return _jd_cache[cache_key]
 
-        # ── Step 1: Call Groq API ─────────────────────────────
+        logger.info(f"Cache MISS | Starting JD extraction | text_length={len(raw_jd_text)}")
+
+        # ── Step 1: Call Groq API (async) ─────────────────────
         raw_response = await self._call_groq(raw_jd_text)
 
         # ── Step 2: Parse JSON from LLM response ─────────────
@@ -123,6 +122,9 @@ class JDExtractionService:
 
         # ── Step 3: Validate with Pydantic ───────────────────
         validated_result = self._validate_schema(extracted_dict)
+
+        # ── Step 4: Store in cache ────────────────────────────
+        _jd_cache[cache_key] = validated_result
 
         logger.info(
             f"Extraction complete | job_title='{validated_result.job_title}' "
@@ -136,13 +138,10 @@ class JDExtractionService:
     async def _call_groq(self, raw_jd_text: str) -> str:
         """
         Calls the Groq Chat Completions API with JSON mode enforced.
-        
-        Groq's response_format={"type": "json_object"} is critical here —
-        it prevents the model from wrapping JSON in markdown fences or
-        adding conversational text that would break json.loads().
+        Uses AsyncGroq so this is truly non-blocking.
         """
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 messages=[
                     {
                         "role": "system",
@@ -159,7 +158,7 @@ class JDExtractionService:
                 model=self.settings.GROQ_MODEL,
                 temperature=self.settings.LLM_TEMPERATURE,
                 max_tokens=self.settings.LLM_MAX_TOKENS,
-                response_format={"type": "json_object"},  # ← CRITICAL: Forces pure JSON
+                response_format={"type": "json_object"},  # ← Forces pure JSON output
             )
 
             raw_content = response.choices[0].message.content
@@ -177,19 +176,13 @@ class JDExtractionService:
     def _parse_json_response(self, raw_response: str) -> dict:
         """
         Parses the raw LLM string into a Python dictionary.
-        
-        Even with JSON mode enabled, we include defensive parsing here
-        to handle any edge cases.
+        Includes defensive stripping for edge-case markdown fences.
         """
         try:
-            # Strip any accidental whitespace/newlines
             cleaned = raw_response.strip()
-
-            # Handle edge case: model sometimes wraps in ```json ... ```
             if cleaned.startswith("```"):
                 lines = cleaned.split("\n")
                 cleaned = "\n".join(lines[1:-1])
-
             return json.loads(cleaned)
 
         except json.JSONDecodeError as e:
@@ -202,14 +195,11 @@ class JDExtractionService:
     def _validate_schema(self, extracted_dict: dict) -> JDExtractionResult:
         """
         Validates the parsed dictionary against the Pydantic JDExtractionResult schema.
-        
-        This is the final safety net — if the LLM drops a required field or
-        returns the wrong type, Pydantic raises a descriptive ValidationError
-        that is returned to the client as a 422 response.
+        If the LLM drops a required field or returns the wrong type, Pydantic raises
+        a descriptive ValidationError returned as a 422 response.
         """
         try:
             return JDExtractionResult(**extracted_dict)
-
         except Exception as e:
             logger.error(f"Pydantic validation failed: {e}")
             raise ValueError(f"Extracted data failed schema validation: {e}")

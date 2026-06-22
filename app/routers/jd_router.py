@@ -8,7 +8,7 @@ This file defines:
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, status
+from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Request, status
 from fastapi.responses import JSONResponse
 
 from app.models.jd_models import JDRequest, JDExtractionResult
@@ -20,15 +20,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["JD Extraction"])
 
 # ─────────────────────────────────────────────────────────────
-# Dependency: Service Singleton
+# Dependency: Service Singleton (pulled from app.state)
 # ─────────────────────────────────────────────────────────────
 
-def get_extraction_service() -> JDExtractionService:
+def get_extraction_service(request: Request) -> JDExtractionService:
     """
-    FastAPI dependency injection for the extraction service.
-    Returns a single instance reused across all requests.
+    Pulls the singleton JDExtractionService from app.state.
+    The service is initialized ONCE at startup in main.py lifespan.
+    This avoids creating a new Groq client on every request (major perf fix).
     """
-    return JDExtractionService()
+    return request.app.state.extraction_service
 
 
 # ─────────────────────────────────────────────────────────────

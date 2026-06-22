@@ -1,12 +1,12 @@
 """
-FastAPI Application Entry Point — Phase 1: JD Intelligence Extractor
+FastAPI Application Entry Point — AI Recruiter v2.0
+Full pipeline: JD Intelligence Extraction → Candidate Ranking
 
-This is the main application file. It:
-- Creates the FastAPI app with full metadata for Swagger UI
-- Configures CORS middleware (for React frontend)
-- Registers all routers
-- Sets up structured logging
-- Provides startup/shutdown lifecycle hooks
+This file:
+- Creates the FastAPI app with Swagger UI
+- Initializes all services as TRUE SINGLETONS in app.state (lifespan)
+- Registers all routers (JD extraction + candidate ranking)
+- Configures CORS + structured logging
 """
 
 import logging
@@ -19,6 +19,10 @@ from fastapi.responses import RedirectResponse
 
 from app.core.config import get_settings
 from app.routers.jd_router import router as jd_router
+from app.routers.ranking_router import router as ranking_router
+from app.services.extraction_service import JDExtractionService
+from app.services.ranking_service import CandidateRankingService
+from app.services.candidate_loader import CandidateLoaderService
 
 # ─────────────────────────────────────────────────────────────
 # Logging Configuration
@@ -33,20 +37,45 @@ logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────
-# App Lifespan (startup / shutdown hooks)
+# App Lifespan — Initialize all services ONCE as singletons
 # ─────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Runs startup logic before serving, cleanup on shutdown."""
+    """
+    Startup: Initialize all services once and store in app.state.
+    Shutdown: Clean up resources.
+
+    Using app.state for singletons ensures:
+    - No per-request client creation overhead
+    - JD extraction cache persists across requests
+    - Candidate data loaded once from disk
+    """
     settings = get_settings()
     logger.info("=" * 60)
-    logger.info("  Phase 1: JD Intelligence Extractor — Starting Up")
+    logger.info("  AI Recruiter v2.0 — Starting Up")
     logger.info(f"  Model  : {settings.GROQ_MODEL}")
     logger.info(f"  API Key: {'✓ Configured' if settings.GROQ_API_KEY else '✗ MISSING — Set GROQ_API_KEY in .env'}")
     logger.info("  Docs   : http://127.0.0.1:8000/docs")
     logger.info("=" * 60)
+
+    # ── Initialize services as singletons ────────────────────
+    app.state.extraction_service = JDExtractionService()
+    logger.info("✓ JDExtractionService initialized (AsyncGroq + cache enabled)")
+
+    app.state.ranking_service = CandidateRankingService()
+    logger.info("✓ CandidateRankingService initialized")
+
+    app.state.candidate_loader = CandidateLoaderService()
+    candidates = app.state.candidate_loader.load()
+    logger.info(f"✓ CandidateLoaderService initialized | {len(candidates)} candidates pre-loaded")
+
+    logger.info("=" * 60)
+    logger.info("  All systems ready. Happy recruiting! 🚀")
+    logger.info("=" * 60)
+
     yield
-    logger.info("Phase 1 service shutting down. Goodbye.")
+
+    logger.info("AI Recruiter service shutting down. Goodbye.")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -59,32 +88,38 @@ app = FastAPI(
     description=settings.APP_DESCRIPTION,
     version=settings.APP_VERSION,
     lifespan=lifespan,
-
-    # ── Swagger UI customization ──────────────────────────────
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_tags=[
         {
             "name": "JD Extraction",
             "description": (
-                "Core Phase 1 endpoints. Transform raw Job Description text into "
-                "clean, validated JSON ready for the ranking pipeline."
+                "Phase 1: Transform raw Job Description text into clean, validated JSON "
+                "containing all hiring signals ready for candidate ranking."
+            ),
+        },
+        {
+            "name": "Candidate Ranking",
+            "description": (
+                "Phase 2: Score and rank candidates against an extracted JD using a "
+                "hybrid weighted scoring engine — skills, experience, behavioral signals, "
+                "location, availability, and hard disqualifier filters."
             ),
         },
         {
             "name": "Health",
-            "description": "Service health and configuration status.",
+            "description": "Service health, config status, and candidate dataset info.",
         },
     ],
     openapi_url="/openapi.json",
     contact={
-        "name": "Phase 1 — AI Recruiter Hackathon",
+        "name": "AI Recruiter — Hackathon Submission",
         "url": "http://127.0.0.1:8000/docs",
     },
 )
 
 # ─────────────────────────────────────────────────────────────
-# CORS Middleware (required for React frontend)
+# CORS Middleware
 # ─────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
@@ -98,6 +133,7 @@ app.add_middleware(
 # Register Routers
 # ─────────────────────────────────────────────────────────────
 app.include_router(jd_router)
+app.include_router(ranking_router)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -105,7 +141,7 @@ app.include_router(jd_router)
 # ─────────────────────────────────────────────────────────────
 @app.get("/", include_in_schema=False)
 async def root():
-    """Redirect root URL to the Swagger UI for easy access."""
+    """Redirect root URL to the Swagger UI."""
     return RedirectResponse(url="/docs")
 
 
