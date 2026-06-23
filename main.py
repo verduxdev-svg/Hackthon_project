@@ -15,7 +15,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.routers.jd_router import router as jd_router
@@ -130,6 +131,11 @@ app.add_middleware(
 )
 
 # ─────────────────────────────────────────────────────────────
+# Mount Static Files (Frontend UI)
+# ─────────────────────────────────────────────────────────────
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# ─────────────────────────────────────────────────────────────
 # Register Routers
 # ─────────────────────────────────────────────────────────────
 app.include_router(jd_router)
@@ -137,12 +143,12 @@ app.include_router(ranking_router)
 
 
 # ─────────────────────────────────────────────────────────────
-# Root Redirect → Swagger UI
+# Root → Serve Frontend UI
 # ─────────────────────────────────────────────────────────────
 @app.get("/", include_in_schema=False)
 async def root():
-    """Redirect root URL to the Swagger UI."""
-    return RedirectResponse(url="/docs")
+    """Serve the frontend UI at root."""
+    return FileResponse("app/static/index.html")
 
 
 # ─────────────────────────────────────────────────────────────

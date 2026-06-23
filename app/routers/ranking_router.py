@@ -277,3 +277,93 @@ async def candidate_count(
     candidate_loader: CandidateLoaderService = Depends(get_candidate_loader),
 ):
     return JSONResponse(content={"candidates_loaded": candidate_loader.count()})
+
+
+# ─────────────────────────────────────────────────────────────
+# ENDPOINT 6: Extract candidate from uploaded resume file
+# Called by the frontend when user uploads individual resumes
+# ─────────────────────────────────────────────────────────────
+
+@router.post(
+    "/extract-candidate",
+    status_code=status.HTTP_200_OK,
+    summary="Extract candidate data from a resume file",
+    description=(
+        "Upload a .docx or .txt resume file. Returns a Candidate JSON object "
+        "compatible with /api/rank-candidates. Used by the frontend UI to parse "
+        "individual resumes before batch ranking."
+    ),
+)
+async def extract_candidate_from_resume(
+    file: UploadFile = File(..., description="Upload a .docx or .txt resume file"),
+):
+    """
+    Parses a resume file and returns a minimal Candidate object.
+    The frontend collects these and sends them to /api/rank-candidates.
+    """
+    import uuid
+    import re
+
+    try:
+        content = await file.read()
+
+        if file.filename.endswith(".txt"):
+            raw_text = content.decode("utf-8", errors="ignore")
+        elif file.filename.endswith(".docx"):
+            import docx, io as _io
+            doc = docx.Document(_io.BytesIO(content))
+            raw_text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": "unsupported_file_type", "message": "Use .docx or .txt"},
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail={"error": "file_read_error", "message": str(e)})
+
+    if len(raw_text.strip()) < 30:
+        raise HTTPException(status_code=400, detail={"error": "resume_too_short"})
+
+    # Extract candidate name from filename (best guess without LLM)
+    stem = file.filename.rsplit(".", 1)[0]
+    candidate_name = stem.replace("_", " ").replace("-", " ").title()
+
+    # Build a minimal Candidate dict the frontend can use
+    # Skills are extracted from the raw text using simple keyword presence check
+    common_skills = [
+        "Python", "Java", "JavaScript", "SQL", "PyTorch", "TensorFlow",
+        "NLP", "Machine Learning", "Deep Learning", "FastAPI", "Django",
+        "React", "Node.js", "Docker", "Kubernetes", "AWS", "GCP", "Azure",
+        "embeddings", "vector databases", "FAISS", "Pinecone", "LLM",
+        "RAG", "transformers", "scikit-learn", "pandas", "Spark", "Kafka",
+    ]
+    raw_lower = raw_text.lower()
+    extracted_skills = [
+        {"name": skill, "proficiency": "intermediate"}
+        for skill in common_skills
+        if skill.lower() in raw_lower
+    ]
+
+    candidate = {
+        "candidate_id": f"resume-{uuid.uuid4().hex[:8]}",
+        "name": candidate_name,
+        "summary": raw_text[:500],  # First 500 chars as summary
+        "profile": {
+            "years_of_experience": None,
+            "location": None,
+            "willing_to_relocate": False,
+            "current_industry": None,
+        },
+        "skills": extracted_skills,
+        "career_history": [],
+        "redrob_signals": None,
+    }
+
+    logger.info(
+        f"Extracted candidate from resume | name='{candidate_name}' "
+        f"| skills_found={len(extracted_skills)} | file={file.filename}"
+    )
+    return JSONResponse(content=candidate)
+
