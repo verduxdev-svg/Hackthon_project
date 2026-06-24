@@ -282,7 +282,7 @@ function showExtractionPreview(extractionResult) {
         document.getElementById('ext-disqualifiers').innerHTML = `<span style="border-color:rgba(255,255,255,0.1); color:var(--text-muted); background:transparent;">None explicitly stated</span>`;
     }
 }
-
+// ui changed 
 function renderRanking(shortlist) {
     const template = document.getElementById('candidate-card-template');
     rankingResults.innerHTML = '';
