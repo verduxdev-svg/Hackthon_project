@@ -84,14 +84,14 @@ async def extract_job_description(
         )
 
     except RuntimeError as e:
-        # Groq API errors → 502 Bad Gateway
-        logger.error(f"Upstream Groq API error: {e}")
+        # Gemini API errors -> 502 Bad Gateway
+        logger.error(f"Upstream Gemini API error: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail={
                 "error": "upstream_api_failure",
                 "message": str(e),
-                "hint": "Check your GROQ_API_KEY and Groq service status."
+                "hint": "Check your GEMINI_API_KEY and Gemini service status."
             }
         )
 
@@ -210,22 +210,23 @@ async def extract_from_file(
 async def health_check(settings: Settings = Depends(get_settings)):
     """
     Returns the current service health status.
-    Also confirms the API key is configured (without exposing it).
+    Also confirms the Gemini API key is configured (without exposing it).
     """
     api_key_configured = bool(
-        settings.GROQ_API_KEY and
-        settings.GROQ_API_KEY != "gsk_your_free_groq_api_key_here"
+        settings.GEMINI_API_KEY and
+        settings.GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE"
     )
 
     return JSONResponse(
         content={
             "status": "healthy",
-            "phase": "Phase 1 — JD Intelligence Extractor",
-            "model": settings.GROQ_MODEL,
-            "groq_api_key_configured": api_key_configured,
+            "phase": "Phase 2 — AI Candidate Ranking",
+            "model": settings.GEMINI_MODEL,
+            "gemini_api_key_configured": api_key_configured,
             "endpoints": {
                 "extract_text": "POST /api/extract-jd",
                 "extract_file": "POST /api/extract-jd/file",
+                "rank_candidates": "POST /api/rank-from-preloaded",
                 "docs": "GET /docs",
             }
         }

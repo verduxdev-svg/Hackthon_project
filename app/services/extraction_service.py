@@ -1,17 +1,20 @@
 """
 The JD Extraction Service — Phase 1 Intelligence Core.
+Powered by Google Gemini (google-genai SDK).
 
-Fixes applied:
-1. Uses AsyncGroq (non-blocking) instead of sync Groq client.
-2. In-memory MD5-keyed cache prevents redundant Groq calls for identical JDs.
+Features:
+1. Uses google-genai async client (non-blocking).
+2. In-memory MD5-keyed cache prevents redundant Gemini calls for identical JDs.
 3. Service is instantiated ONCE (singleton in app state) — no per-request overhead.
+4. Retry with exponential backoff + model fallback chain for 503/429 errors.
 """
 
 import json
 import hashlib
 import logging
 import asyncio
-from groq import AsyncGroq, APIConnectionError, APIStatusError
+from google import genai
+from google.genai import types
 
 from app.core.config import get_settings
 from app.models.jd_models import JDExtractionResult
@@ -39,25 +42,20 @@ CRITICAL RULES:
    - must_have_skills: Non-negotiable. Absence = candidate should be rejected.
    - nice_to_have_skills: Preferred but not blockers.
 3. For minimum_years_experience: if a range is given (e.g., "5-9 years"),
-   use the LOWER bound as an integer.
+   use the LOWER bound as an integer. NEVER return null — use 0 if unknown.
 4. Behavioral traits: Look for culture/work-style signals (e.g., "bias for action",
    "async-first", "comfortable with ambiguity"). These are often implicit.
 5. Disqualifiers: Extract EXPLICIT anti-patterns mentioned in the JD
    (e.g., "no consulting-only backgrounds", "no pure research roles").
-   These are CRITICAL for accurate ranking — most JDs don't have them but when
-   they do, they are the strongest signal of all.
-6. Domain knowledge: Areas of expertise beyond named technologies
-   (e.g., "information retrieval", "A/B testing", "marketplace dynamics").
-7. preferred_company_types: If the JD mentions preferring or penalizing
-   certain company types (product vs consulting vs FAANG), extract them.
+6. Domain knowledge: Areas of expertise beyond named technologies.
+7. preferred_company_types: If the JD mentions preferring or penalizing certain company types.
 8. remote_ok: Set to true only if the JD explicitly says remote or WFH is OK.
-9. extraction_confidence: Set to "high" if the JD is detailed,
-   "medium" if ambiguous, "low" if very vague.
+9. extraction_confidence: Set to "high" if the JD is detailed, "medium" if ambiguous, "low" if vague.
 
 OUTPUT JSON SCHEMA (return EXACTLY this structure):
 {
   "job_title": "<string>",
-  "minimum_years_experience": <integer>,
+  "minimum_years_experience": <integer, never null, use 0 if unknown>,
   "maximum_years_experience": <integer or null>,
   "must_have_skills": ["<string>", ...],
   "nice_to_have_skills": ["<string>", ...],
@@ -68,7 +66,7 @@ OUTPUT JSON SCHEMA (return EXACTLY this structure):
   "remote_ok": <boolean>,
   "preferred_notice_period_days": <integer or null>,
   "preferred_company_types": ["<string>", ...],
-  "key_responsibilities_summary": "<2-3 sentence summary of actual day-to-day work>",
+  "key_responsibilities_summary": "<2-3 sentence summary>",
   "extraction_confidence": "<high|medium|low>"
 }
 """
@@ -83,14 +81,20 @@ class JDExtractionService:
     Encapsulates all logic for the JD → structured JSON extraction pipeline.
 
     Instantiated ONCE at app startup via lifespan and stored in app.state.
-    Uses AsyncGroq so it never blocks FastAPI's event loop.
+    Uses google-genai async client so it never blocks FastAPI's event loop.
     """
+
+    # Fallback model chain — tried in order when primary is unavailable (503)
+    FALLBACK_MODELS = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+    ]
 
     def __init__(self):
         self.settings = get_settings()
-        # AsyncGroq: non-blocking — critical for FastAPI concurrency
-        self.client = AsyncGroq(api_key=self.settings.GROQ_API_KEY)
-        logger.info(f"JDExtractionService initialized | model={self.settings.GROQ_MODEL}")
+        self.client = genai.Client(api_key=self.settings.GEMINI_API_KEY)
+        logger.info(f"JDExtractionService initialized | model={self.settings.GEMINI_MODEL}")
 
     async def extract(self, raw_jd_text: str) -> JDExtractionResult:
         """
@@ -104,18 +108,18 @@ class JDExtractionService:
 
         Raises:
             ValueError: If the LLM response cannot be parsed or validated.
-            RuntimeError: If the Groq API call fails.
+            RuntimeError: If the Gemini API call fails.
         """
         # ── Cache check ───────────────────────────────────────
         cache_key = hashlib.md5(raw_jd_text.strip().encode()).hexdigest()
         if cache_key in _jd_cache:
-            logger.info(f"Cache HIT for JD (md5={cache_key[:8]}...) — skipping Groq call")
+            logger.info(f"Cache HIT for JD (md5={cache_key[:8]}...) — skipping Gemini call")
             return _jd_cache[cache_key]
 
         logger.info(f"Cache MISS | Starting JD extraction | text_length={len(raw_jd_text)}")
 
-        # ── Step 1: Call Groq API (async) ─────────────────────
-        raw_response = await self._call_groq(raw_jd_text)
+        # ── Step 1: Call Gemini API ───────────────────────────
+        raw_response = await self._call_gemini(raw_jd_text)
 
         # ── Step 2: Parse JSON from LLM response ─────────────
         extracted_dict = self._parse_json_response(raw_response)
@@ -135,43 +139,76 @@ class JDExtractionService:
 
         return validated_result
 
-    async def _call_groq(self, raw_jd_text: str) -> str:
+    async def _call_gemini(self, raw_jd_text: str) -> str:
         """
-        Calls the Groq Chat Completions API with JSON mode enforced.
-        Uses AsyncGroq so this is truly non-blocking.
+        Calls the Google Gemini API asynchronously with JSON output enforced.
+
+        Retry strategy:
+        - Tries each model in FALLBACK_MODELS (2.5-flash -> 2.0-flash -> 1.5-flash)
+        - Per model: up to 3 attempts with 2s, 4s exponential backoff
+        - Retries on 503 (high demand) and 429 (rate limit)
+        - Fails fast on 400, 401, 404 etc.
         """
-        try:
-            response = await self.client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": SYSTEM_PROMPT
-                    },
-                    {
-                        "role": "user",
-                        "content": (
-                            f"Extract all hiring signals from this Job Description:\n\n"
-                            f"---BEGIN JD---\n{raw_jd_text}\n---END JD---"
+        user_message = (
+            f"Extract all hiring signals from this Job Description:\n\n"
+            f"---BEGIN JD---\n{raw_jd_text}\n---END JD---\n\n"
+            f"Return ONLY a valid JSON object matching the schema. No markdown, no prose."
+        )
+
+        config = types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            temperature=self.settings.LLM_TEMPERATURE,
+            max_output_tokens=self.settings.LLM_MAX_TOKENS,
+            response_mime_type="application/json",
+        )
+
+        # Configured model first, then fallbacks
+        primary = self.settings.GEMINI_MODEL
+        models_to_try = [primary] + [m for m in self.FALLBACK_MODELS if m != primary]
+
+        last_error = None
+
+        for model in models_to_try:
+            for attempt in range(1, 4):   # 3 attempts per model
+                try:
+                    logger.info(f"Gemini call | model={model} | attempt={attempt}")
+                    response = await self.client.aio.models.generate_content(
+                        model=model,
+                        contents=user_message,
+                        config=config,
+                    )
+                    raw_content = response.text
+                    logger.debug(f"Gemini response: {raw_content[:200]}...")
+                    logger.info(f"Gemini success | model={model}")
+                    return raw_content
+
+                except Exception as e:
+                    err_str = str(e)
+                    last_error = e
+
+                    is_retryable = ("503" in err_str or "UNAVAILABLE" in err_str
+                                    or "429" in err_str or "RESOURCE_EXHAUSTED" in err_str)
+
+                    if is_retryable and attempt < 3:
+                        wait = 2 ** attempt   # 2s, 4s
+                        logger.warning(
+                            f"Gemini {err_str[:80]}... | model={model} "
+                            f"| attempt={attempt} | retrying in {wait}s"
                         )
-                    }
-                ],
-                model=self.settings.GROQ_MODEL,
-                temperature=self.settings.LLM_TEMPERATURE,
-                max_tokens=self.settings.LLM_MAX_TOKENS,
-                response_format={"type": "json_object"},  # ← Forces pure JSON output
-            )
+                        await asyncio.sleep(wait)
+                        continue
 
-            raw_content = response.choices[0].message.content
-            logger.debug(f"Groq raw response: {raw_content[:200]}...")
-            return raw_content
+                    if is_retryable:
+                        logger.warning(f"All retries exhausted for model={model}, trying fallback")
+                        break   # move to next model
 
-        except APIConnectionError as e:
-            logger.error(f"Groq API connection failed: {e}")
-            raise RuntimeError(f"Could not connect to Groq API: {e}")
+                    # Non-retryable (401, 400, etc) — fail immediately
+                    logger.error(f"Gemini non-retryable error: {e}")
+                    raise RuntimeError(f"Gemini API call failed: {e}")
 
-        except APIStatusError as e:
-            logger.error(f"Groq API error {e.status_code}: {e.message}")
-            raise RuntimeError(f"Groq API returned error {e.status_code}: {e.message}")
+        raise RuntimeError(
+            f"Gemini unavailable across all fallback models. Last error: {last_error}"
+        )
 
     def _parse_json_response(self, raw_response: str) -> dict:
         """
@@ -195,8 +232,6 @@ class JDExtractionService:
     def _validate_schema(self, extracted_dict: dict) -> JDExtractionResult:
         """
         Validates the parsed dictionary against the Pydantic JDExtractionResult schema.
-        If the LLM drops a required field or returns the wrong type, Pydantic raises
-        a descriptive ValidationError returned as a 422 response.
         """
         try:
             return JDExtractionResult(**extracted_dict)
