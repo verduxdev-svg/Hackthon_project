@@ -21,6 +21,8 @@ Scoring Breakdown (max 100 points):
 
 import logging
 from rapidfuzz import fuzz, process
+import numpy as np
+from sentence_transformers import SentenceTransformer, util
 
 from app.models.jd_models import JDExtractionResult
 from app.models.ranking_models import (
@@ -52,12 +54,18 @@ DISQUALIFIER_PENALTY = 50.0
 
 
 class CandidateRankingService:
-    """
-    Ranks candidates against a structured JD extraction result.
+    """CandidateRankingService implements hybrid scoring for candidate ranking.
 
-    Instantiated once at startup and reused across all requests.
-    Stateless — safe for concurrent async requests.
+    The service provides methods to compute scores based on must‑have skills,
+    experience, nice‑to‑have skills, behavioral signals, location, notice period,
+    and disqualifiers. It is instantiated once at startup and reused across
+    requests.
     """
+
+    def __init__(self):
+        # Load embedding model once for the service
+        self._embedder = SentenceTransformer('all-MiniLM-L6-v2')
+        logger.info('CandidateRankingService initialized with SentenceTransformer')
 
     def rank(
         self,
@@ -126,11 +134,9 @@ class CandidateRankingService:
     ) -> RankedCandidate:
         """Scores a single candidate against the JD extraction."""
 
-        candidate_skill_names = self._get_skill_names(candidate)
-
         # ── 1. Must-have skills (40 pts) ──────────────────────
         must_matched, must_missing, must_score = self._score_skills(
-            jd.must_have_skills, candidate_skill_names, max_points=WEIGHTS["must_have_skills"]
+            jd.must_have_skills, candidate, max_points=WEIGHTS["must_have_skills"]
         )
 
         # ── 2. Experience (20 pts) ────────────────────────────
@@ -138,7 +144,7 @@ class CandidateRankingService:
 
         # ── 3. Nice-to-have skills (15 pts) ───────────────────
         nice_matched, _, nice_score = self._score_skills(
-            jd.nice_to_have_skills, candidate_skill_names, max_points=WEIGHTS["nice_to_have_skills"]
+            jd.nice_to_have_skills, candidate, max_points=WEIGHTS["nice_to_have_skills"]
         )
 
         # ── 4. Behavioral / redrob signals (10 pts) ───────────
@@ -207,10 +213,37 @@ class CandidateRankingService:
             skills.append(candidate.summary)
         return skills
 
+    def _encode_texts(self, texts: list[str]) -> np.ndarray:
+        """Encode a list of strings into embedding vectors using the shared model.
+        Returns a NumPy array of shape (len(texts), embedding_dim)."""
+        if not texts:
+            return np.zeros((0, self._embedder.get_sentence_embedding_dimension()))
+        return np.array(self._embedder.encode(texts, convert_to_numpy=True, normalize_embeddings=True))
+
+    def _ensure_candidate_embeddings(self, candidate: Candidate) -> np.ndarray:
+        """Compute and cache skill embeddings for a candidate if not already present.
+        Embeddings are derived from skill names and optional summary text.
+        Returns a NumPy array of shape (num_skills, dim)."""
+        if candidate.skill_embeddings is not None:
+            # Assume already a list of floats; reshape to 2D array
+            return np.array(candidate.skill_embeddings).reshape(-1, self._embedder.get_sentence_embedding_dimension())
+        # Gather skill strings
+        skill_names = []
+        if candidate.skills:
+            skill_names.extend([s.name for s in candidate.skills if s.name])
+        if candidate.summary:
+            skill_names.append(candidate.summary)
+        if not skill_names:
+            return np.zeros((0, self._embedder.get_sentence_embedding_dimension()))
+        embeddings = self._encode_texts(skill_names)
+        # Store flattened list for later reuse
+        candidate.skill_embeddings = embeddings.flatten().tolist()
+        return embeddings
+
     def _score_skills(
         self,
         jd_skills: list[str],
-        candidate_skill_names: list[str],
+        candidate: Candidate,
         max_points: float,
     ) -> tuple[list[str], list[str], float]:
         """
@@ -222,26 +255,27 @@ class CandidateRankingService:
 
         Returns: (matched_skills, missing_skills, score)
         """
-        if not jd_skills:
-            return [], [], max_points  # No skills required = full marks
-
-        matched = []
-        missing = []
-
-        for jd_skill in jd_skills:
-            # rapidfuzz.process.extractOne returns (match, score, index) or None
-            result = process.extractOne(
-                jd_skill,
-                candidate_skill_names,
-                scorer=fuzz.partial_ratio,
-                score_cutoff=FUZZY_THRESHOLD,
-            )
-            if result:
+        # Compute JD skill embeddings
+        jd_embeddings = self._encode_texts(jd_skills)
+        # Ensure candidate embeddings are available
+        cand_embeddings = self._ensure_candidate_embeddings(candidate)
+        if jd_embeddings.shape[0] == 0:
+            return [], [], max_points
+        if cand_embeddings.shape[0] == 0:
+            # No candidate skill info -> treat all as missing
+            return [], jd_skills, 0.0
+        # Compute cosine similarity matrix (already normalized)
+        sim_matrix = util.cos_sim(jd_embeddings, cand_embeddings).numpy()
+        matched: list[str] = []
+        missing: list[str] = []
+        # For each JD skill, check if any candidate skill exceeds threshold
+        for idx, jd_skill in enumerate(jd_skills):
+            best_sim = float(sim_matrix[idx].max()) if sim_matrix.shape[1] > 0 else 0.0
+            if best_sim >= 0.7:
                 matched.append(jd_skill)
             else:
                 missing.append(jd_skill)
-
-        coverage = len(matched) / len(jd_skills)
+        coverage = len(matched) / len(jd_skills) if jd_skills else 1.0
         score = max_points * coverage
         return matched, missing, score
 

@@ -16,10 +16,8 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
 
     # ── Model Configuration ───────────────────────────────────
-    # gemini-2.5-flash: fast structured extraction with JSON mode.
-    # gemini-2.0-flash: stable fallback.
-    # gemini-1.5-flash: last-resort fallback.
     GEMINI_MODEL: str = "gemini-2.5-flash"
+    SIMILARITY_THRESHOLD: float = 0.65  # Cosine similarity cutoff for semantic skill matching
 
     # Low temperature keeps extraction deterministic and factual.
     LLM_TEMPERATURE: float = 0.1

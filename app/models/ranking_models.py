@@ -7,6 +7,9 @@ They are designed to directly consume JDExtractionResult from Phase 1.
 
 from pydantic import BaseModel, Field
 from typing import Optional
+from sentence_transformers import SentenceTransformer, util
+import hashlib
+import re
 
 
 # ─────────────────────────────────────────────────────────────
@@ -55,8 +58,17 @@ class Candidate(BaseModel):
     profile: Optional[CandidateProfile] = None
     skills: Optional[list[CandidateSkill]] = []
     career_history: Optional[list[CareerEntry]] = []
-    redrob_signals: Optional[RedrobSignals] = None
+    skill_embeddings: Optional[list[float]] = None  # List of embedding vectors for candidate skills
     summary: Optional[str] = None              # Free-text professional summary
+
+    def _extract_years_regex(self, text: str) -> int | None:
+        """Extract years of experience from free‑text using a simple regex.
+        Returns integer years or None if not found.
+        """
+        match = re.search(r"(\d+)\s+years?", text, re.IGNORECASE)
+        if match:
+            return int(match.group(1))
+        return None
 
 
 # ─────────────────────────────────────────────────────────────

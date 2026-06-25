@@ -9,6 +9,8 @@ import json
 import logging
 import uuid
 import asyncio
+import hashlib
+import re
 from google import genai
 from google.genai import types
 
@@ -16,6 +18,9 @@ from app.core.config import get_settings
 from app.models.candidate_models import Candidate
 
 logger = logging.getLogger(__name__)
+
+# In‑process cache for resume extraction
+_candidate_cache: dict[str, Candidate] = {}
 
 SYSTEM_PROMPT = """
 You are an expert Technical Recruiter parsing a candidate resume.
@@ -57,6 +62,12 @@ class CandidateExtractionService:
         logger.info(f"CandidateExtractionService initialized | model={self.settings.GEMINI_MODEL}")
 
     async def extract(self, raw_resume_text: str) -> Candidate:
+        # Compute MD5 hash of the raw text for caching
+        cache_key = hashlib.md5(raw_resume_text.encode('utf-8')).hexdigest()
+        if cache_key in _candidate_cache:
+            logger.info("Resume extraction cache hit")
+            return _candidate_cache[cache_key]
+
         if len(raw_resume_text.strip()) < 50:
             raise ValueError("Resume text is too short to extract meaningful information.")
 
@@ -86,9 +97,17 @@ class CandidateExtractionService:
                         raise ValueError("Gemini returned an empty response.")
 
                     parsed_data = json.loads(response_content)
+                    # Regex fallback for years of experience if missing or zero
+                    if not parsed_data.get('years_of_experience') or parsed_data.get('years_of_experience') == 0:
+                        # Simple regex to capture "X years" patterns
+                        match = re.search(r"(\d+)\s+years?", raw_resume_text, re.IGNORECASE)
+                        if match:
+                            parsed_data['years_of_experience'] = int(match.group(1))
                     parsed_data["candidate_id"] = f"C_{uuid.uuid4().hex[:8]}"
                     candidate = Candidate(**parsed_data)
                     logger.info(f"Successfully extracted candidate: {candidate.name}")
+                    # Store in cache
+                    _candidate_cache[cache_key] = candidate
                     return candidate
 
                 except json.JSONDecodeError as e:
