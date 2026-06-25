@@ -54,14 +54,14 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info("=" * 60)
     logger.info("  AI Recruiter v2.0 — Starting Up")
-    logger.info(f"  Model  : {settings.GROQ_MODEL}")
-    logger.info(f"  API Key: {'✓ Configured' if settings.GROQ_API_KEY else '✗ MISSING — Set GROQ_API_KEY in .env'}")
+    logger.info(f"  Model  : {settings.GEMINI_MODEL}")
+    logger.info(f"  API Key: {'OK - Configured' if settings.GEMINI_API_KEY else 'MISSING — Set GEMINI_API_KEY in .env'}")
     logger.info("  Docs   : http://127.0.0.1:8000/docs")
     logger.info("=" * 60)
 
     # ── Initialize services as singletons ────────────────────
     app.state.extraction_service = JDExtractionService()
-    logger.info("✓ JDExtractionService initialized (AsyncGroq + cache enabled)")
+    logger.info("[OK] JDExtractionService initialized (Gemini + cache enabled)")
 
     app.state.ranking_service = CandidateRankingService()
     logger.info("✓ CandidateRankingService initialized")

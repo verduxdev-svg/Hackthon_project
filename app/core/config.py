@@ -1,5 +1,5 @@
 """
-Core configuration module for the JD Extractor microservice.
+Core configuration module for the AI Recruiter microservice.
 
 Uses Pydantic Settings to load and validate environment variables.
 This ensures fail-fast behaviour if the API key is not set.
@@ -12,20 +12,20 @@ from functools import lru_cache
 class Settings(BaseSettings):
     """Application settings — loaded from .env file or environment variables."""
 
-    # ── Groq API ──────────────────────────────────────────────
-    GROQ_API_KEY: str
+    # ── Google Gemini API ──────────────────────────────────────
+    GEMINI_API_KEY: str
 
     # ── Model Configuration ───────────────────────────────────
-    # llama-3.3-70b-versatile: best reasoning for structured extraction.
-    # llama-3.1-8b-instant: ~5× faster, sufficient for extraction.
-    GROQ_MODEL: str = "llama-3.1-8b-instant"
+    # gemini-2.5-flash: fast structured extraction with JSON mode.
+    # gemini-2.0-flash: stable fallback.
+    # gemini-1.5-flash: last-resort fallback.
+    GEMINI_MODEL: str = "gemini-2.5-flash"
 
     # Low temperature keeps extraction deterministic and factual.
-    LLM_TEMPERATURE: float = 0.05
+    LLM_TEMPERATURE: float = 0.1
 
-    # Maximum tokens for the LLM response. The JSON output should
-    # always fit comfortably within 1024 tokens.
-    LLM_MAX_TOKENS: int = 1200
+    # Maximum tokens for the LLM response.
+    LLM_MAX_TOKENS: int = 4096
 
     # ── Ranking Configuration ─────────────────────────────────
     # Path to the candidates JSON dataset (relative to project root)
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     SHORTLIST_SIZE: int = 10
 
     # ── App Configuration ─────────────────────────────────────
-    APP_TITLE: str = "AI Recruiter — JD Intelligence + Candidate Ranking"
+    APP_TITLE: str = "AI Recruiter — Candidate Ranking Intelligence"
     APP_DESCRIPTION: str = (
         "End-to-end AI recruiter pipeline: Transforms raw Job Description text into "
         "structured signals, then ranks candidates the way a great recruiter would — "
@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     )
     APP_VERSION: str = "2.0.0"
 
-    # ── CORS Configuration (for React frontend) ───────────────
+    # ── CORS Configuration ────────────────────────────────────
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173", "*"]
 
     class Config:
