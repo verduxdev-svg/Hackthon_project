@@ -1,246 +1,446 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Recruiter | Intelligence Platform</title>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Recruiter — Intelligent Candidate Discovery</title>
+  <meta name="description" content="AI-powered candidate ranking engine. Upload a JD, load candidates, and surface the top matches with full score transparency." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-    <div class="background-effects">
-        <div class="glow-orb orb-1"></div>
-        <div class="glow-orb orb-2"></div>
-        <div class="grid-overlay"></div>
-    </div>
 
-    <div class="app-container">
-        <!-- Header -->
-        <header class="cyber-header">
-            <div class="logo">
-                <div class="logo-icon-container">
-                    <i class="fa-solid fa-layer-group pulse-glow"></i>
-                </div>
-                <div class="logo-text">
-                    <h1>AI Recruiter <span class="version-badge">v2.0</span></h1>
-                    <span class="logo-subtitle">Intelligent Candidate Discovery Engine</span>
-                </div>
-            </div>
-            <div class="status-indicator">
-                <div class="status-dot"></div>
-                <span class="status-text">SYSTEM ONLINE</span>
-            </div>
-        </header>
+  <!-- ── Background FX ── -->
+  <div class="bg-fx" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="grid-lines"></div>
+  </div>
 
-        <main class="dashboard-grid">
-            <!-- Left Column: Inputs -->
-            <section class="input-panel">
-                
-                <!-- Job Description Section -->
-                <div class="neo-card module-jd">
-                    <div class="card-header">
-                        <h2><i class="fa-solid fa-crosshairs"></i> Target Profile (JD)</h2>
-                        <div class="tabs">
-                            <button class="tab-btn active" data-target="jd-file">File</button>
-                            <button class="tab-btn" data-target="jd-text">Raw Text</button>
-                        </div>
-                    </div>
-                    
-                    <div class="card-body">
-                        <div class="tab-content active" id="jd-file">
-                            <div class="drop-zone" id="jd-drop-zone">
-                                <div class="drop-zone-icon">
-                                    <i class="fa-solid fa-cloud-arrow-up"></i>
-                                </div>
-                                <p class="drop-primary">Upload Job Description</p>
-                                <p class="drop-secondary">Drag & drop .docx, .txt, or .json</p>
-                                <button class="browse-btn" onclick="document.getElementById('jd-file-input').click()">Browse Files</button>
-                                <input type="file" id="jd-file-input" accept=".docx,.txt,.json" hidden>
-                            </div>
-                            <div class="file-status" id="jd-file-name"></div>
-                        </div>
+  <!-- ══════════════════════════════════════════
+       NAV
+  ══════════════════════════════════════════ -->
+  <nav class="topnav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="#">
+        <div class="brand-icon"><i class="fa-solid fa-brain"></i></div>
+        <div class="brand-name">AI<span>Recruiter</span></div>
+      </a>
 
-                        <div class="tab-content" id="jd-text">
-                            <div class="textarea-wrapper">
-                                <textarea id="jd-raw-text" placeholder="Paste the complete job description here..."></textarea>
-                                <div class="textarea-glow"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+      <div class="nav-links">
+        <a href="#section-jd" class="nav-link active">Job Description</a>
+        <a href="#section-candidates" class="nav-link">Candidates</a>
+        <a href="#section-run" class="nav-link">Analysis</a>
+        <a href="#section-results" class="nav-link" id="nav-results-link" style="opacity:.45;pointer-events:none">Results</a>
+      </div>
 
-                <!-- Candidates Section -->
-                <div class="neo-card module-candidates">
-                    <div class="card-header">
-                        <h2><i class="fa-solid fa-users-rays"></i> Candidate Pipeline</h2>
-                        <span class="header-badge" id="candidate-count-badge">0 Loaded</span>
-                    </div>
-                    
-                    <div class="card-body">
-                        <div class="drop-zone candidate-zone" id="candidate-drop-zone">
-                            <div class="drop-zone-icon">
-                                <i class="fa-solid fa-file-import"></i>
-                            </div>
-                            <p class="drop-primary">Ingest Candidates</p>
-                            <p class="drop-secondary">Upload multiple Resumes (.docx, .txt) or JSON dataset</p>
-                            <button class="browse-btn" onclick="document.getElementById('candidate-file-input').click()">Browse Files</button>
-                            <input type="file" id="candidate-file-input" accept=".json,.docx,.txt" multiple hidden>
-                        </div>
-                        
-                        <div class="candidates-list-container">
-                            <div class="candidates-list" id="candidates-preview-list">
-                                <!-- Uploaded candidates appear here -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Action Area -->
-                <div class="action-dock">
-                    <button id="run-ranking-btn" class="action-btn run-btn">
-                        <span class="btn-content">
-                            <i class="fa-solid fa-bolt"></i>
-                            <span>INITIATE ANALYSIS</span>
-                        </span>
-                        <div class="btn-glow"></div>
-                    </button>
-                    <button id="download-csv-btn" class="action-btn export-btn" disabled>
-                        <i class="fa-solid fa-download"></i>
-                    </button>
-                </div>
-            </section>
-
-            <!-- Right Column: Results -->
-            <section class="results-panel">
-                
-                <!-- Extraction Preview -->
-                <div class="neo-card module-extraction hidden" id="extraction-panel">
-                    <div class="card-header">
-                        <h3><i class="fa-solid fa-microchip"></i> Extracted Intelligence</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="stats-row">
-                            <div class="stat-pill">
-                                <span class="stat-label">Role</span>
-                                <span class="stat-value" id="ext-job-title">-</span>
-                            </div>
-                            <div class="stat-pill">
-                                <span class="stat-label">Min Exp</span>
-                                <span class="stat-value"><span id="ext-min-exp">0</span> yrs</span>
-                            </div>
-                        </div>
-                        
-                        <div class="skills-showcase">
-                            <div class="skill-group">
-                                <h4>Must-Have Capabilities</h4>
-                                <div class="neo-tags" id="ext-must-have"></div>
-                            </div>
-                            <div class="skill-group critical">
-                                <h4>Hard Disqualifiers</h4>
-                                <div class="neo-tags danger" id="ext-disqualifiers"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Ranking Results -->
-                <div class="neo-card module-ranking" id="ranking-panel">
-                    <div class="card-header">
-                        <h2><i class="fa-solid fa-trophy"></i> AI Match Results</h2>
-                        <div class="sort-controls hidden" id="ranking-controls">
-                            <span class="evaluated-count" id="total-evaluated">0 Evaluated</span>
-                        </div>
-                    </div>
-                    
-                    <div class="card-body ranking-body">
-                        <div id="loading-overlay" class="state-overlay hidden">
-                            <div class="hologram-spinner">
-                                <div class="ring r1"></div>
-                                <div class="ring r2"></div>
-                                <div class="ring r3"></div>
-                            </div>
-                            <p class="processing-text" id="loading-text">Processing Natural Language Signals...</p>
-                        </div>
-
-                        <div class="ranking-list" id="ranking-results">
-                            <div class="empty-state">
-                                <div class="empty-icon-wrapper">
-                                    <i class="fa-solid fa-radar"></i>
-                                </div>
-                                <h3>Awaiting Data</h3>
-                                <p>Upload a JD and candidate files to begin the matching sequence.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </section>
-        </main>
-    </div>
-
-    <!-- Template for Candidate Card -->
-    <template id="candidate-card-template">
-        <div class="neo-candidate-card">
-            <div class="card-glass-bg"></div>
-            <div class="rank-indicator">
-                <span class="rank-num">1</span>
-            </div>
-            
-            <div class="card-main-content">
-                <div class="c-header">
-                    <div class="c-identity">
-                        <h3 class="c-name">Name</h3>
-                        <div class="match-score-pill">
-                            <i class="fa-solid fa-star"></i>
-                            <span class="c-score">95</span><span class="c-score-max">/100</span>
-                        </div>
-                    </div>
-                    <div class="c-insight">
-                        <i class="fa-solid fa-lightbulb"></i>
-                        <p class="recruiter-note">AI Note</p>
-                    </div>
-                </div>
-                
-                <div class="c-metrics">
-                    <div class="metric-track">
-                        <div class="m-label">
-                            <span>Core Skills</span>
-                            <span class="m-val skills-pts"></span>
-                        </div>
-                        <div class="m-bar-bg"><div class="m-bar-fill fill-skills"></div></div>
-                    </div>
-                    <div class="metric-track">
-                        <div class="m-label">
-                            <span>Experience Level</span>
-                            <span class="m-val exp-pts"></span>
-                        </div>
-                        <div class="m-bar-bg"><div class="m-bar-fill fill-exp"></div></div>
-                    </div>
-                </div>
-
-                <div class="c-tags-section">
-                    <div class="tag-row success">
-                        <span class="row-label"><i class="fa-solid fa-check"></i> Matched</span>
-                        <div class="tags-wrapper matched-skills"></div>
-                    </div>
-                    <div class="tag-row warning">
-                        <span class="row-label"><i class="fa-solid fa-triangle-exclamation"></i> Missing</span>
-                        <div class="tags-wrapper missing-skills"></div>
-                    </div>
-                    <div class="tag-row danger hidden">
-                        <span class="row-label"><i class="fa-solid fa-ban"></i> Blockers</span>
-                        <div class="tags-wrapper disqualified-reasons"></div>
-                    </div>
-                </div>
-            </div>
+      <div class="nav-right">
+        <div class="health-pill" id="health-badge">
+          <span class="hp-dot"></span>
+          <span class="hp-label">Checking…</span>
         </div>
-    </template>
+        <a href="/docs" target="_blank" class="btn-nav-cta">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> API Docs
+        </a>
+      </div>
 
-    <script src="app.js"></script>
+      <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menu">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Mobile Nav Drawer -->
+  <div class="mobile-drawer hidden" id="mobile-drawer">
+    <a href="#section-jd" class="md-link" onclick="closeMobileMenu()">Job Description</a>
+    <a href="#section-candidates" class="md-link" onclick="closeMobileMenu()">Candidates</a>
+    <a href="#section-run" class="md-link" onclick="closeMobileMenu()">Analysis</a>
+    <a href="#section-results" class="md-link" onclick="closeMobileMenu()">Results</a>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       HERO
+  ══════════════════════════════════════════ -->
+  <header class="hero-section">
+    <div class="hero-inner">
+
+      <div class="hero-badge">
+        <div class="badge-dot"></div>
+        <span>Powered by Gemini + Semantic Embeddings</span>
+      </div>
+
+      <h1 class="hero-headline">
+        Rank the <em class="grad-purple">Right</em> Candidates,<br/>
+        <span class="grad-teal">Not Just</span> the Visible Ones.
+      </h1>
+
+      <p class="hero-sub">
+        We surface the top candidates — from skills and experience to behavioural signals — with full scoring transparency and zero guesswork.
+      </p>
+
+      <div class="hero-actions">
+        <a href="#section-jd" class="btn-cta">
+          <i class="fa-solid fa-bolt-lightning"></i> Start Ranking
+        </a>
+        <a href="/docs" target="_blank" class="btn-ghost">
+          <i class="fa-solid fa-book-open"></i> View API Docs
+        </a>
+      </div>
+
+      <div class="hero-stat-strip">
+        <div class="hss-item">
+          <span class="hss-val grad-purple">6</span>
+          <span class="hss-label">Scoring Dimensions</span>
+        </div>
+        <div class="hss-sep"></div>
+        <div class="hss-item">
+          <span class="hss-val grad-teal">100</span>
+          <span class="hss-label">Max Score Points</span>
+        </div>
+        <div class="hss-sep"></div>
+        <div class="hss-item">
+          <span class="hss-val" style="color:#fff">0</span>
+          <span class="hss-label">Config Required</span>
+        </div>
+        <div class="hss-sep"></div>
+        <div class="hss-item">
+          <span class="hss-val grad-purple">AI</span>
+          <span class="hss-label">Semantic Matching</span>
+        </div>
+      </div>
+
+      <!-- Floating preview cards -->
+      <div class="hero-cards" aria-hidden="true">
+        <div class="hcard hcard-1">
+          <div class="hcard-rank">#1</div>
+          <div class="hcard-info">
+            <div class="hcard-name">Sarah Chen</div>
+            <div class="hcard-score">92.4 pts</div>
+          </div>
+          <div class="hcard-bar"><div class="hcard-fill" style="width:92%"></div></div>
+          <div class="hcard-skills">
+            <span>Python</span><span>ML</span><span>FastAPI</span>
+          </div>
+        </div>
+        <div class="hcard hcard-2">
+          <div class="hcard-rank">#2</div>
+          <div class="hcard-info">
+            <div class="hcard-name">Arjun Mehta</div>
+            <div class="hcard-score">87.1 pts</div>
+          </div>
+          <div class="hcard-bar"><div class="hcard-fill" style="width:87%"></div></div>
+          <div class="hcard-skills">
+            <span>NLP</span><span>PyTorch</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════
+       MAIN WORKFLOW
+  ══════════════════════════════════════════ -->
+  <main class="main-workflow">
+
+    <!-- ─── STEP 1: JOB DESCRIPTION ─── -->
+    <section class="wf-section" id="section-jd">
+      <div class="wf-label">
+        <div class="step-chip"><span>01</span></div>
+        <div>
+          <h2 class="wf-title">Job Description</h2>
+          <p class="wf-sub">Provide the JD as raw text or upload a file. AI extracts all hiring signals automatically.</p>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <!-- Tab Switcher -->
+        <div class="tab-switcher">
+          <button class="tsw-btn active" data-tab="jd-text-panel" id="tab-text">
+            <i class="fa-solid fa-pen-to-square"></i> Paste Text
+          </button>
+          <button class="tsw-btn" data-tab="jd-file-panel" id="tab-file">
+            <i class="fa-solid fa-file-arrow-up"></i> Upload File
+          </button>
+        </div>
+
+        <!-- Text Panel -->
+        <div class="tab-panel active" id="jd-text-panel">
+          <div class="textarea-shell">
+            <textarea id="jd-raw-text" class="dark-textarea"
+              placeholder="Paste the complete job description here…&#10;&#10;Include the role title, required skills, experience level, and any disqualifying criteria for best AI extraction results."></textarea>
+            <div class="ta-footer">
+              <div class="ta-count" id="char-count">0 characters</div>
+              <div class="ta-req">Minimum 50 characters</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- File Panel -->
+        <div class="tab-panel" id="jd-file-panel">
+          <div class="dropzone" id="jd-drop-zone">
+            <div class="dz-content">
+              <div class="dz-icon">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+              </div>
+              <p class="dz-primary">Drag &amp; drop your JD file here</p>
+              <p class="dz-secondary">Supports <strong>.docx</strong>, <strong>.txt</strong>, and <strong>.json</strong></p>
+              <button class="btn-dz" onclick="document.getElementById('jd-file-input').click()">
+                <i class="fa-solid fa-folder-open"></i> Browse Files
+              </button>
+            </div>
+            <input type="file" id="jd-file-input" accept=".docx,.txt,.json" hidden />
+          </div>
+          <div class="status-bar" id="jd-file-status"></div>
+        </div>
+
+        <!-- Extraction Preview (hidden until ready) -->
+        <div class="extraction-panel hidden" id="extraction-preview">
+          <div class="ep-strip">
+            <div class="ep-icon"><i class="fa-solid fa-microchip"></i></div>
+            <div class="ep-copy">
+              <div class="ep-title">Intelligence Extracted</div>
+              <div class="ep-sub">AI-parsed signals ready for candidate matching</div>
+            </div>
+            <div class="ep-live-badge"><span></span> Live</div>
+          </div>
+          <div class="ep-data">
+            <div class="ep-meta-row">
+              <div class="ep-meta">
+                <div class="ep-meta-label"><i class="fa-solid fa-briefcase"></i> Role</div>
+                <div class="ep-meta-val" id="ep-title">—</div>
+              </div>
+              <div class="ep-meta">
+                <div class="ep-meta-label"><i class="fa-solid fa-clock"></i> Min Experience</div>
+                <div class="ep-meta-val"><span id="ep-exp">0</span> years</div>
+              </div>
+            </div>
+            <div class="ep-tags-grid">
+              <div class="ep-tag-col">
+                <div class="ep-tag-label tl-green"><i class="fa-solid fa-circle-check"></i> Must-Have Skills</div>
+                <div class="tag-cloud" id="ep-must-have"></div>
+              </div>
+              <div class="ep-tag-col">
+                <div class="ep-tag-label tl-red"><i class="fa-solid fa-ban"></i> Disqualifiers</div>
+                <div class="tag-cloud tag-cloud-red" id="ep-disqualifiers"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── STEP 2: CANDIDATE POOL ─── -->
+    <section class="wf-section" id="section-candidates">
+      <div class="wf-label">
+        <div class="step-chip"><span>02</span></div>
+        <div>
+          <h2 class="wf-title">Candidate Pool</h2>
+          <p class="wf-sub">Upload a structured <code>.json</code> dataset or individual resume files. Multiple formats supported.</p>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="cpool-header">
+          <div class="cph-left">
+            <span class="cph-label">Loaded Candidates</span>
+            <div class="cph-count" id="candidate-count-badge">0</div>
+          </div>
+          <button class="btn-clear hidden" id="clear-candidates-btn">
+            <i class="fa-solid fa-trash-can"></i> Clear All
+          </button>
+        </div>
+
+        <div class="dropzone" id="candidate-drop-zone">
+          <div class="dz-content">
+            <div class="dz-icon dz-icon-green">
+              <i class="fa-solid fa-users"></i>
+            </div>
+            <p class="dz-primary">Drop candidate files here</p>
+            <p class="dz-secondary"><strong>.json</strong> dataset &nbsp;·&nbsp; multiple <strong>.docx</strong> or <strong>.txt</strong> resumes</p>
+            <button class="btn-dz" onclick="document.getElementById('candidate-file-input').click()">
+              <i class="fa-solid fa-folder-open"></i> Browse Files
+            </button>
+          </div>
+          <input type="file" id="candidate-file-input" accept=".json,.docx,.txt" multiple hidden />
+        </div>
+
+        <div class="cand-table" id="candidates-preview-list"></div>
+      </div>
+    </section>
+
+    <!-- ─── STEP 3: CONFIGURE & RUN ─── -->
+    <section class="wf-section" id="section-run">
+      <div class="wf-label">
+        <div class="step-chip"><span>03</span></div>
+        <div>
+          <h2 class="wf-title">Configure &amp; Run</h2>
+          <p class="wf-sub">Set shortlist size and launch the AI ranking engine.</p>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="config-panel">
+          <div class="cfg-row">
+            <div class="cfg-field">
+              <label class="cfg-label" for="shortlist-size">
+                <i class="fa-solid fa-list-ol"></i> Shortlist Size
+              </label>
+              <div class="cfg-control">
+                <input type="number" id="shortlist-size" class="cfg-input" value="10" min="1" max="50" />
+                <span class="cfg-note">Top N candidates returned</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="weight-tags-row">
+            <div class="wtr-label"><i class="fa-solid fa-weight-hanging"></i> Scoring Weights</div>
+            <div class="wtr-tags">
+              <span class="wtag wtag-purple">Core Skills 40%</span>
+              <span class="wtag wtag-teal">Experience 20%</span>
+              <span class="wtag wtag-blue">Nice-to-Have 15%</span>
+              <span class="wtag">Behavioural 10%</span>
+              <span class="wtag">Location 10%</span>
+              <span class="wtag">Availability 5%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="run-bar">
+          <button class="btn-run" id="run-ranking-btn">
+            <i class="fa-solid fa-bolt-lightning"></i>
+            <span>Analyse &amp; Rank Candidates</span>
+            <div class="btn-run-shine"></div>
+          </button>
+          <button class="btn-export" id="download-csv-btn" disabled>
+            <i class="fa-solid fa-file-csv"></i> Export CSV
+          </button>
+        </div>
+
+        <div class="error-alert hidden" id="error-banner">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span id="error-text"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── STEP 4: RESULTS ─── -->
+    <section class="wf-section hidden" id="section-results">
+      <div class="wf-label">
+        <div class="step-chip step-chip-gold"><i class="fa-solid fa-trophy"></i></div>
+        <div>
+          <h2 class="wf-title">Ranked Shortlist</h2>
+          <p class="wf-sub" id="results-meta">—</p>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div class="loading-shell hidden" id="loading-state">
+        <div class="ls-inner">
+          <div class="ls-rings">
+            <div class="ls-ring r1"></div>
+            <div class="ls-ring r2"></div>
+            <div class="ls-ring r3"></div>
+            <div class="ls-icon"><i class="fa-solid fa-brain"></i></div>
+          </div>
+          <p class="ls-text" id="loading-text">Extracting job signals…</p>
+          <p class="ls-sub">This may take a few seconds</p>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="ranking-results" class="results-list"></div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="sf-inner">
+      <div class="sf-brand">
+        <div class="brand-icon sm"><i class="fa-solid fa-brain"></i></div>
+        <span>AI Recruiter v2.0</span>
+      </div>
+      <div class="sf-links">
+        <a href="/docs" target="_blank">Swagger API</a>
+        <a href="/redoc" target="_blank">ReDoc</a>
+        <a href="#section-jd">Get Started</a>
+      </div>
+      <p class="sf-copy">© 2025 AI Recruiter · Hackathon Submission</p>
+    </div>
+  </footer>
+
+  <!-- ══ CANDIDATE RESULT CARD TEMPLATE ══ -->
+  <template id="candidate-card-tpl">
+    <article class="result-card">
+      <div class="rc-left">
+        <div class="rc-rank-num"></div>
+        <div class="rc-ring-wrap">
+          <svg class="rc-ring-svg" viewBox="0 0 64 64">
+            <circle class="rr-bg"  cx="32" cy="32" r="27"/>
+            <circle class="rr-arc" cx="32" cy="32" r="27"/>
+          </svg>
+          <div class="rc-ring-val"></div>
+        </div>
+      </div>
+
+      <div class="rc-body">
+        <div class="rcb-top">
+          <div class="rcb-identity">
+            <div class="rcb-avatar"></div>
+            <div class="rcb-names">
+              <h3 class="rcb-name"></h3>
+              <span class="rcb-id"></span>
+            </div>
+          </div>
+          <div class="rcb-score-box">
+            <div class="rcb-pts"></div>
+            <div class="rcb-pts-label">/ 100 pts</div>
+          </div>
+        </div>
+
+        <p class="rcb-note"></p>
+
+        <div class="rcb-bars">
+          <div class="rbar">
+            <div class="rbar-hd"><span class="rbar-label">Core Skills</span><span class="rbar-val skills-pts"></span></div>
+            <div class="rbar-track"><div class="rbar-fill rf-skills"></div></div>
+          </div>
+          <div class="rbar">
+            <div class="rbar-hd"><span class="rbar-label">Experience</span><span class="rbar-val exp-pts"></span></div>
+            <div class="rbar-track"><div class="rbar-fill rf-exp"></div></div>
+          </div>
+          <div class="rbar">
+            <div class="rbar-hd"><span class="rbar-label">Nice-to-Have</span><span class="rbar-val nice-pts"></span></div>
+            <div class="rbar-track"><div class="rbar-fill rf-nice"></div></div>
+          </div>
+          <div class="rbar">
+            <div class="rbar-hd"><span class="rbar-label">Behavioural</span><span class="rbar-val beh-pts"></span></div>
+            <div class="rbar-track"><div class="rbar-fill rf-beh"></div></div>
+          </div>
+        </div>
+
+        <div class="rcb-tag-grid">
+          <div class="rtg">
+            <div class="rtg-label rtg-green"><i class="fa-solid fa-circle-check"></i> Matched</div>
+            <div class="rtg-tags matched-skills"></div>
+          </div>
+          <div class="rtg missing-rtg">
+            <div class="rtg-label rtg-amber"><i class="fa-solid fa-triangle-exclamation"></i> Missing</div>
+            <div class="rtg-tags missing-skills"></div>
+          </div>
+          <div class="rtg disq-rtg hidden">
+            <div class="rtg-label rtg-red"><i class="fa-solid fa-ban"></i> Disqualifiers</div>
+            <div class="rtg-tags disq-skills"></div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script src="/static/app.js"></script>
 </body>
 </html>

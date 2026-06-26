@@ -9,6 +9,10 @@ This file:
 - Configures CORS + structured logging
 """
 
+import os
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -64,14 +68,14 @@ async def lifespan(app: FastAPI):
     logger.info("[OK] JDExtractionService initialized (Gemini + cache enabled)")
 
     app.state.ranking_service = CandidateRankingService()
-    logger.info("✓ CandidateRankingService initialized")
+    logger.info("[OK] CandidateRankingService initialized")
 
     app.state.candidate_loader = CandidateLoaderService()
     candidates = app.state.candidate_loader.load()
-    logger.info(f"✓ CandidateLoaderService initialized | {len(candidates)} candidates pre-loaded")
+    logger.info(f"[OK] CandidateLoaderService initialized | {len(candidates)} candidates pre-loaded")
 
     logger.info("=" * 60)
-    logger.info("  All systems ready. Happy recruiting! 🚀")
+    logger.info("  All systems ready. Happy recruiting! :)")
     logger.info("=" * 60)
 
     yield

@@ -223,10 +223,14 @@ class JDExtractionService:
             return json.loads(cleaned)
 
         except json.JSONDecodeError as e:
-            logger.error(f"JSON parse failed | error={e} | raw={raw_response[:300]}")
+            pos = e.pos
+            start = max(0, pos - 100)
+            end = min(len(raw_response), pos + 100)
+            context = raw_response[start:end]
+            logger.error(f"JSON parse failed | error={e} | context_around_error='{context}' | raw={raw_response}")
             raise ValueError(
                 f"LLM returned invalid JSON. Parse error: {e}. "
-                f"Raw output (first 300 chars): {raw_response[:300]}"
+                f"Context: ... {context} ..."
             )
 
     def _validate_schema(self, extracted_dict: dict) -> JDExtractionResult:

@@ -1,357 +1,507 @@
-// State
-let rawJdText = "";
+/* ══════════════════════════════════════════════════════════════
+   AI Recruiter — Frontend Logic (Dark Theme)
+   All API calls preserved · New UI class names aligned
+══════════════════════════════════════════════════════════════ */
+
+'use strict';
+
+// ── State ──
+let rawJdText = '';
 let uploadedCandidates = [];
 let rankedResults = [];
 
-// DOM Elements
-const tabs = document.querySelectorAll('.tab-btn');
-const tabContents = document.querySelectorAll('.tab-content');
-const jdDropZone = document.getElementById('jd-drop-zone');
-const jdFileInput = document.getElementById('jd-file-input');
-const jdFileName = document.getElementById('jd-file-name');
-const jdRawText = document.getElementById('jd-raw-text');
+// ── DOM refs ──
+const jdRawText       = document.getElementById('jd-raw-text');
+const charCount       = document.getElementById('char-count');
+const jdDropZone      = document.getElementById('jd-drop-zone');
+const jdFileInput     = document.getElementById('jd-file-input');
+const jdFileStatus    = document.getElementById('jd-file-status');
 
-const candidateDropZone = document.getElementById('candidate-drop-zone');
-const candidateFileInput = document.getElementById('candidate-file-input');
+const candidateDropZone     = document.getElementById('candidate-drop-zone');
+const candidateFileInput    = document.getElementById('candidate-file-input');
 const candidatesPreviewList = document.getElementById('candidates-preview-list');
-const candidateCountBadge = document.getElementById('candidate-count-badge');
+const candidateCountBadge   = document.getElementById('candidate-count-badge');
+const clearCandidatesBtn    = document.getElementById('clear-candidates-btn');
 
-const runBtn = document.getElementById('run-ranking-btn');
-const downloadBtn = document.getElementById('download-csv-btn');
+const shortlistSizeInput = document.getElementById('shortlist-size');
+const runBtn             = document.getElementById('run-ranking-btn');
+const downloadBtn        = document.getElementById('download-csv-btn');
+const errorBanner        = document.getElementById('error-banner');
+const errorText          = document.getElementById('error-text');
 
-// Panels
-const extractionPanel = document.getElementById('extraction-panel');
-const rankingPanel = document.getElementById('ranking-panel');
-const loadingOverlay = document.getElementById('loading-overlay');
-const rankingResults = document.getElementById('ranking-results');
+const sectionResults  = document.getElementById('section-results');
+const loadingState    = document.getElementById('loading-state');
+const loadingTextEl   = document.getElementById('loading-text');
+const rankingResults  = document.getElementById('ranking-results');
+const resultsMeta     = document.getElementById('results-meta');
+const extractionPanel = document.getElementById('extraction-preview');
+const navResultsLink  = document.getElementById('nav-results-link');
+const mobileMenuBtn   = document.getElementById('mobile-menu-btn');
+const mobileDrawer    = document.getElementById('mobile-drawer');
 
-// Setup Tabs
-tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        tabContents.forEach(c => c.classList.remove('active'));
-        
-        tab.classList.add('active');
-        document.getElementById(tab.dataset.target).classList.add('active');
+// ── Utility: close mobile menu ──
+function closeMobileMenu() {
+    mobileDrawer.classList.add('hidden');
+}
+
+// ── Mobile menu toggle ──
+if (mobileMenuBtn) {
+    mobileMenuBtn.addEventListener('click', () => {
+        mobileDrawer.classList.toggle('hidden');
+    });
+}
+
+// ── Active nav highlighting on scroll ──
+(function setupScrollSpy() {
+    const links  = document.querySelectorAll('.nav-link');
+    const anchors = ['section-jd','section-candidates','section-run','section-results'];
+    const io = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                const id = e.target.id;
+                links.forEach(l => {
+                    l.classList.toggle('active', l.getAttribute('href') === `#${id}`);
+                });
+            }
+        });
+    }, { threshold: 0.45 });
+    anchors.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) io.observe(el);
+    });
+})();
+
+// ── Health Check ──
+(async function checkHealth() {
+    const badge = document.getElementById('health-badge');
+    const label = badge.querySelector('.hp-label');
+    try {
+        const res = await fetch('/api/health');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        badge.classList.add('online');
+        label.textContent = data.status === 'healthy' ? 'System Online' : 'Degraded';
+    } catch {
+        badge.classList.add('offline');
+        label.textContent = 'Offline';
+    }
+})();
+
+// ── Tab Switcher ──
+document.querySelectorAll('.tsw-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tsw-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+        checkStep1Complete();
     });
 });
 
-// Setup JD Drop Zone
-jdDropZone.addEventListener('click', (e) => {
-    if(e.target.tagName !== 'BUTTON') jdFileInput.click();
-});
-
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    jdDropZone.addEventListener(eventName, preventDefaults, false);
-});
-
-['dragenter', 'dragover'].forEach(eventName => {
-    jdDropZone.addEventListener(eventName, () => jdDropZone.classList.add('dragover'), false);
-});
-
-['dragleave', 'drop'].forEach(eventName => {
-    jdDropZone.addEventListener(eventName, () => jdDropZone.classList.remove('dragover'), false);
-});
-
-jdDropZone.addEventListener('drop', handleJdDrop, false);
-jdFileInput.addEventListener('change', function() {
-    if(this.files && this.files.length > 0) processJdFile(this.files[0]);
-});
-
-function preventDefaults(e) {
-    e.preventDefault();
-    e.stopPropagation();
+// ── Character Counter ──
+if (jdRawText) {
+    jdRawText.addEventListener('input', () => {
+        const len = jdRawText.value.length;
+        charCount.textContent = `${len.toLocaleString()} character${len !== 1 ? 's' : ''}`;
+        charCount.classList.toggle('enough', len >= 50);
+        checkStep1Complete();
+    });
 }
 
-function handleJdDrop(e) {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    if(files.length > 0) processJdFile(files[0]);
+function checkStep1Complete() {
+    const textActive = document.getElementById('tab-text')?.classList.contains('active');
+    const ok = textActive ? jdRawText.value.trim().length >= 50 : rawJdText.trim().length >= 50;
+    return ok;
 }
+
+// ── Drop Zone Utility ──
+function setupDropZone(zone, input, onFiles) {
+    if (!zone) return;
+    zone.addEventListener('click', e => {
+        if (e.target.tagName !== 'BUTTON') input.click();
+    });
+    input.addEventListener('change', () => {
+        if (input.files?.length) onFiles(input.files);
+    });
+    ['dragenter','dragover','dragleave','drop'].forEach(ev =>
+        zone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); })
+    );
+    ['dragenter','dragover'].forEach(ev =>
+        zone.addEventListener(ev, () => zone.classList.add('dragover'))
+    );
+    ['dragleave','drop'].forEach(ev =>
+        zone.addEventListener(ev, () => zone.classList.remove('dragover'))
+    );
+    zone.addEventListener('drop', e => {
+        if (e.dataTransfer.files.length) onFiles(e.dataTransfer.files);
+    });
+}
+
+// ── JD Drop Zone Setup ──
+setupDropZone(jdDropZone, jdFileInput, files => processJdFile(files[0]));
 
 async function processJdFile(file) {
-    jdFileName.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Processing ${file.name}...`;
-    
+    setStatus(jdFileStatus, 'loading', `<i class="fa-solid fa-circle-notch fa-spin"></i> Processing ${file.name}…`);
+
     if (file.name.endsWith('.json')) {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = e => {
             try {
                 const data = JSON.parse(e.target.result);
                 rawJdText = data.raw_jd_text || JSON.stringify(data);
-                jdFileName.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${file.name} loaded`;
-            } catch (err) {
-                jdFileName.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:var(--status-danger)"></i> Invalid JSON format`;
+                setStatus(jdFileStatus, 'success', `<i class="fa-solid fa-circle-check"></i> ${file.name} loaded`);
+            } catch {
+                setStatus(jdFileStatus, 'error', `<i class="fa-solid fa-triangle-exclamation"></i> Invalid JSON format`);
             }
         };
         reader.readAsText(file);
-    } else {
-        const formData = new FormData();
-        formData.append("file", file);
-        try {
-            const response = await fetch('/api/extract-jd/file', {
-                method: 'POST',
-                body: formData
-            });
-            if(!response.ok) throw new Error("Failed to process JD file");
-            const result = await response.json();
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                rawJdText = e.target.result;
-                jdFileName.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${file.name} parsed successfully`;
-                showExtractionPreview(result);
-            };
-            reader.readAsText(file);
-        } catch(e) {
-            jdFileName.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:var(--status-danger)"></i> Error parsing document`;
-        }
+        return;
+    }
+
+    // .docx / .txt → server extraction
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+        const res = await fetch('/api/extract-jd/file', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error();
+        const result = await res.json();
+
+        // Read raw text for ranking payload
+        const reader = new FileReader();
+        reader.onload = e => { rawJdText = e.target.result; };
+        reader.readAsText(file);
+
+        setStatus(jdFileStatus, 'success', `<i class="fa-solid fa-circle-check"></i> ${file.name} — intelligence extracted`);
+        showExtractionPanel(result);
+    } catch {
+        setStatus(jdFileStatus, 'error', `<i class="fa-solid fa-triangle-exclamation"></i> Failed to parse file`);
     }
 }
 
-// Setup Candidate Drop Zone
-candidateDropZone.addEventListener('click', (e) => {
-    if(e.target.tagName !== 'BUTTON') candidateFileInput.click();
+// ── Candidate Drop Zone Setup ──
+setupDropZone(candidateDropZone, candidateFileInput, files => {
+    Array.from(files).forEach(processCandidateFile);
 });
-
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    candidateDropZone.addEventListener(eventName, preventDefaults, false);
-});
-
-['dragenter', 'dragover'].forEach(eventName => {
-    candidateDropZone.addEventListener(eventName, () => candidateDropZone.classList.add('dragover'), false);
-});
-
-['dragleave', 'drop'].forEach(eventName => {
-    candidateDropZone.addEventListener(eventName, () => candidateDropZone.classList.remove('dragover'), false);
-});
-
-candidateDropZone.addEventListener('drop', handleCandidateDrop, false);
-candidateFileInput.addEventListener('change', function() {
-    if(this.files && this.files.length > 0) Array.from(this.files).forEach(processCandidateFile);
-});
-
-function handleCandidateDrop(e) {
-    const dt = e.dataTransfer;
-    Array.from(dt.files).forEach(processCandidateFile);
-}
 
 async function processCandidateFile(file) {
     if (file.name.endsWith('.json')) {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = e => {
             try {
                 const data = JSON.parse(e.target.result);
                 let cands = data.candidates || data.data || data;
-                if(!Array.isArray(cands)) cands = [cands];
-                
+                if (!Array.isArray(cands)) cands = [cands];
                 cands.forEach(c => {
                     uploadedCandidates.push(c);
-                    renderCandidatePreview(c.name || "Unknown Candidate", file.name);
+                    addCandidateRow(c.name || 'Unknown Candidate', file.name, 'ok');
                 });
                 updateCandidateCount();
             } catch (err) {
-                console.error("Invalid JSON", err);
+                console.error('Invalid JSON:', err);
             }
         };
         reader.readAsText(file);
-    } else if (file.name.endsWith('.docx') || file.name.endsWith('.txt')) {
-        const id = "cand-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
-        renderCandidatePreview(`Parsing ${file.name}...`, file.name, id, true);
-        
-        const formData = new FormData();
-        formData.append("file", file);
-        try {
-            const response = await fetch('/api/extract-candidate', {
-                method: 'POST',
-                body: formData
-            });
-            if(!response.ok) throw new Error("Failed to extract candidate");
-            const candidate = await response.json();
-            uploadedCandidates.push(candidate);
-            updateCandidatePreview(id, candidate.name, true);
-            updateCandidateCount();
-        } catch(e) {
-            updateCandidatePreview(id, "Extraction Failed", false);
-        }
+        return;
+    }
+
+    const rowId = `cand-${Date.now()}-${Math.random().toString(36).slice(2,5)}`;
+    addCandidateRow(`Parsing ${file.name}…`, file.name, 'loading', rowId);
+
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+        const res = await fetch('/api/extract-candidate', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error();
+        const candidate = await res.json();
+        uploadedCandidates.push(candidate);
+        updateCandidateRow(rowId, candidate.name, 'ok');
+        updateCandidateCount();
+    } catch {
+        updateCandidateRow(rowId, 'Extraction failed', 'error');
     }
 }
 
-function renderCandidatePreview(name, source, id=null, loading=false) {
+function addCandidateRow(name, source, status, id = null) {
     const div = document.createElement('div');
-    div.className = 'candidate-preview-item';
-    if(id) div.id = id;
-    
+    div.className = 'cand-row';
+    if (id) div.id = id;
+
+    const initials = name.length >= 2
+        ? name.replace('Parsing ','').substring(0,2).toUpperCase()
+        : '??';
+
     div.innerHTML = `
-        <div class="cand-info">
-            ${loading ? '<i class="fa-solid fa-circle-notch fa-spin" style="color:var(--accent-primary)"></i>' : '<i class="fa-solid fa-user-astronaut" style="color:var(--text-secondary)"></i>'}
-            <span class="cand-name">${name}</span>
-        </div>
-        <span class="cand-source">${source}</span>
+        <div class="cand-av">${initials}</div>
+        <div class="cand-nm">${escHtml(name)}</div>
+        <div class="cand-src">${escHtml(source)}</div>
+        <div class="cand-st ${status}">${statusIcon(status)}</div>
     `;
     candidatesPreviewList.appendChild(div);
 }
 
-function updateCandidatePreview(id, newName, success) {
+function updateCandidateRow(id, name, status) {
     const div = document.getElementById(id);
-    if(div) {
-        if(success) {
-            div.querySelector('.cand-info').innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--status-success)"></i> <span class="cand-name">${newName}</span>`;
-        } else {
-            div.querySelector('.cand-info').innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:var(--status-danger)"></i> <span class="cand-name">${newName}</span>`;
-        }
-    }
+    if (!div) return;
+    const initials = name.substring(0,2).toUpperCase();
+    div.querySelector('.cand-av').textContent = initials;
+    div.querySelector('.cand-nm').textContent = name;
+    div.querySelector('.cand-st').className   = `cand-st ${status}`;
+    div.querySelector('.cand-st').innerHTML   = statusIcon(status);
+}
+
+function statusIcon(s) {
+    if (s === 'ok')      return '<i class="fa-solid fa-circle-check"></i>';
+    if (s === 'loading') return '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+    if (s === 'error')   return '<i class="fa-solid fa-triangle-exclamation"></i>';
+    return '';
 }
 
 function updateCandidateCount() {
-    candidateCountBadge.innerText = `${uploadedCandidates.length} Loaded`;
-    candidateCountBadge.style.background = 'rgba(0, 240, 255, 0.2)';
-    candidateCountBadge.style.color = 'var(--accent-primary)';
+    const n = uploadedCandidates.length;
+    candidateCountBadge.textContent = n;
+    candidateCountBadge.classList.toggle('has-data', n > 0);
+    clearCandidatesBtn.classList.toggle('hidden', n === 0);
 }
 
-// Run Ranking
+if (clearCandidatesBtn) {
+    clearCandidatesBtn.addEventListener('click', () => {
+        uploadedCandidates = [];
+        candidatesPreviewList.innerHTML = '';
+        updateCandidateCount();
+    });
+}
+
+// ── Run Ranking ──
 runBtn.addEventListener('click', async () => {
-    let finalJdText = rawJdText;
-    if (document.querySelector('.tab-btn[data-target="jd-text"]').classList.contains('active')) {
-        finalJdText = jdRawText.value;
-    }
+    hideError();
 
-    if (!finalJdText || finalJdText.length < 50) {
-        alert("Please provide a valid Job Description (at least 50 characters).");
+    const textTabActive = document.getElementById('tab-text')?.classList.contains('active');
+    const finalJd = textTabActive ? jdRawText.value.trim() : rawJdText.trim();
+
+    if (!finalJd || finalJd.length < 50) {
+        showError('Please provide a Job Description of at least 50 characters.');
         return;
     }
-
     if (uploadedCandidates.length === 0) {
-        alert("Please upload at least one candidate (JSON or Resume).");
+        showError('Please upload at least one candidate (JSON dataset or resume files).');
         return;
     }
 
+    const shortlistSize = Math.min(Math.max(parseInt(shortlistSizeInput.value, 10) || 10, 1), 50);
+
+    // Show results section + loading
+    sectionResults.classList.remove('hidden');
+    loadingState.classList.remove('hidden');
     rankingResults.innerHTML = '';
-    loadingOverlay.classList.remove('hidden');
-    extractionPanel.classList.add('hidden');
-    document.getElementById('ranking-controls').classList.remove('hidden');
-    document.getElementById('total-evaluated').innerText = `${uploadedCandidates.length} Evaluated`;
+    loadingTextEl.textContent = 'Extracting intelligence from job description…';
+    runBtn.disabled = true;
+
+    // Scroll results into view
+    setTimeout(() => sectionResults.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+
+    // Unlock nav link
+    if (navResultsLink) {
+        navResultsLink.style.opacity = '1';
+        navResultsLink.style.pointerEvents = 'auto';
+    }
 
     try {
-        const response = await fetch('/api/rank-candidates', {
+        loadingTextEl.textContent = 'Scoring and ranking candidates semantically…';
+
+        const res = await fetch('/api/rank-candidates', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                raw_jd_text: finalJdText,
+                raw_jd_text: finalJd,
                 candidates: uploadedCandidates,
-                shortlist_size: uploadedCandidates.length
-            })
+                shortlist_size: shortlistSize,
+            }),
         });
 
-        if(!response.ok) throw new Error("Ranking failed");
-        const result = await response.json();
-        
-        showExtractionPreview(result);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(
+                err?.detail?.message || err?.detail || `Server error ${res.status}`
+            );
+        }
 
-        // Add an artificial delay for visual flair (let the user see the hologram spinner)
-        setTimeout(() => {
-            loadingOverlay.classList.add('hidden');
-            renderRanking(result.shortlist);
-            downloadBtn.disabled = false;
-            rankedResults = result.shortlist;
-        }, 1500);
-        
-    } catch(e) {
-        console.error(e);
-        loadingOverlay.classList.add('hidden');
-        rankingResults.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon-wrapper" style="color:var(--status-danger)"><i class="fa-solid fa-triangle-exclamation"></i></div>
-                <h3>Analysis Failed</h3>
-                <p>Could not process the ranking request. Check connection to AI core.</p>
-            </div>`;
+        const result = await res.json();
+        showExtractionPanel(result);
+
+        await delay(900);
+
+        loadingState.classList.add('hidden');
+        runBtn.disabled = false;
+
+        const total = result.total_candidates_evaluated;
+        const shown = result.shortlist.length;
+        const disq  = result.disqualified_count;
+        resultsMeta.innerHTML = `<strong>${total}</strong> evaluated &nbsp;·&nbsp; <strong>${shown}</strong> shortlisted &nbsp;·&nbsp; <strong>${disq}</strong> disqualified`;
+
+        renderRanking(result.shortlist);
+        rankedResults = result.shortlist;
+        downloadBtn.disabled = false;
+
+    } catch (err) {
+        loadingState.classList.add('hidden');
+        runBtn.disabled = false;
+        showError(err.message || 'Ranking failed. Check server connection.');
     }
 });
 
-function showExtractionPreview(extractionResult) {
-    if(!extractionResult.must_have_skills) return;
-    
-    extractionPanel.classList.remove('hidden');
-    document.getElementById('ext-job-title').innerText = extractionResult.job_title;
-    document.getElementById('ext-min-exp').innerText = extractionResult.minimum_years_experience || 0;
-    
-    document.getElementById('ext-must-have').innerHTML = extractionResult.must_have_skills.map(s => `<span>${s}</span>`).join('');
-    
-    if(extractionResult.disqualifiers && extractionResult.disqualifiers.length > 0) {
-        document.getElementById('ext-disqualifiers').innerHTML = extractionResult.disqualifiers.map(s => `<span>${s}</span>`).join('');
-    } else {
-        document.getElementById('ext-disqualifiers').innerHTML = `<span style="border-color:rgba(255,255,255,0.1); color:var(--text-muted); background:transparent;">None explicitly stated</span>`;
-    }
-}
-// ui changed 
+// ── Render Rankings ──
 function renderRanking(shortlist) {
-    const template = document.getElementById('candidate-card-template');
+    const tpl = document.getElementById('candidate-card-tpl');
     rankingResults.innerHTML = '';
 
-    shortlist.forEach(c => {
-        const clone = template.content.cloneNode(true);
-        const card = clone.querySelector('.neo-candidate-card');
-        
-        if(c.rank === 1) card.classList.add('top-rank');
-        
-        clone.querySelector('.rank-num').innerText = c.rank;
-        clone.querySelector('.c-name').innerText = c.name;
-        clone.querySelector('.c-score').innerText = c.total_score.toFixed(1);
-        clone.querySelector('.recruiter-note').innerText = c.recruiter_note;
-        
-        clone.querySelector('.skills-pts').innerText = `(${c.score_breakdown.must_have_skills_score.toFixed(1)}/40)`;
-        clone.querySelector('.fill-skills').style.width = `${(c.score_breakdown.must_have_skills_score / 40) * 100}%`;
-        
-        clone.querySelector('.exp-pts').innerText = `(${c.score_breakdown.experience_score.toFixed(1)}/20)`;
-        clone.querySelector('.fill-exp').style.width = `${(c.score_breakdown.experience_score / 20) * 100}%`;
+    shortlist.forEach((c, idx) => {
+        const clone = tpl.content.cloneNode(true);
+        const card  = clone.querySelector('.result-card');
 
-        // Match details
-        const matchedWrapper = clone.querySelector('.matched-skills');
-        if(c.matched_must_have_skills.length > 0) {
-            matchedWrapper.innerHTML = c.matched_must_have_skills.map(s => `<span>${s}</span>`).join('');
+        // Rank classes
+        if (c.rank === 1) card.classList.add('rank-1');
+        else if (c.rank === 2) card.classList.add('rank-2');
+        else if (c.rank === 3) card.classList.add('rank-3');
+        if (c.disqualifiers_hit?.length) card.classList.add('disqualified');
+
+        clone.querySelector('.rc-rank-num').textContent = `#${c.rank}`;
+
+        // Ring score
+        const arc = clone.querySelector('.rr-arc');
+        const rVal = clone.querySelector('.rc-ring-val');
+        const score = Math.max(0, c.total_score);
+        const circumference = 169.6;
+        const offset = circumference - (circumference * (score / 100));
+        setTimeout(() => { arc.style.strokeDashoffset = offset; }, 60 + idx * 30);
+        rVal.textContent = Math.round(score);
+
+        // Identity
+        const initials = c.name.substring(0,2).toUpperCase();
+        clone.querySelector('.rcb-avatar').textContent = initials;
+        clone.querySelector('.rcb-name').textContent = c.name;
+        clone.querySelector('.rcb-id').textContent   = c.candidate_id || `—`;
+        clone.querySelector('.rcb-pts').textContent  = score.toFixed(1);
+        clone.querySelector('.rcb-note').textContent = c.recruiter_note;
+
+        // Bars
+        const sb = c.score_breakdown;
+        setBar(clone, '.rf-skills', '.skills-pts', sb.must_have_skills_score, 40);
+        setBar(clone, '.rf-exp',    '.exp-pts',    sb.experience_score,       20);
+        setBar(clone, '.rf-nice',   '.nice-pts',   sb.nice_to_have_score,     15);
+        setBar(clone, '.rf-beh',    '.beh-pts',    sb.behavioral_score,       10);
+
+        // Tags
+        renderTags(clone, '.matched-skills', c.matched_must_have_skills);
+
+        if (c.missing_must_have_skills?.length) {
+            renderTags(clone, '.missing-skills', c.missing_must_have_skills);
         } else {
-            matchedWrapper.innerHTML = `<span>None</span>`;
-            matchedWrapper.parentElement.style.opacity = "0.5";
+            clone.querySelector('.missing-rtg').classList.add('hidden');
         }
 
-        const missingWrapper = clone.querySelector('.missing-skills');
-        if(c.missing_must_have_skills.length > 0) {
-            missingWrapper.innerHTML = c.missing_must_have_skills.map(s => `<span>${s}</span>`).join('');
-        } else {
-            missingWrapper.parentElement.classList.add('hidden');
+        if (c.disqualifiers_hit?.length) {
+            renderTags(clone, '.disq-skills', c.disqualifiers_hit);
+            clone.querySelector('.disq-rtg').classList.remove('hidden');
         }
 
-        const disqWrapper = clone.querySelector('.disqualified-reasons');
-        if(c.disqualifiers_hit && c.disqualifiers_hit.length > 0) {
-            disqWrapper.innerHTML = c.disqualifiers_hit.map(s => `<span>${s}</span>`).join('');
-            disqWrapper.parentElement.classList.remove('hidden');
-            card.style.borderColor = 'rgba(255, 23, 68, 0.4)';
-        }
-
+        card.style.animationDelay = `${idx * 75}ms`;
         rankingResults.appendChild(clone);
     });
 }
 
-// Download CSV
+function setBar(clone, barSel, ptsSel, value, max) {
+    const pct = Math.min(Math.max((value / max) * 100, 0), 100);
+    clone.querySelector(barSel).style.width  = `${pct}%`;
+    clone.querySelector(ptsSel).textContent  = `${value.toFixed(1)} / ${max}`;
+}
+
+function renderTags(clone, sel, items) {
+    const c = clone.querySelector(sel);
+    if (!items?.length) {
+        c.innerHTML = `<span style="background:transparent;border:none;padding:0;color:rgba(255,255,255,.3)">None</span>`;
+        return;
+    }
+    c.innerHTML = items.map(s => `<span>${escHtml(s)}</span>`).join('');
+}
+
+// ── Show Extraction Panel ──
+function showExtractionPanel(result) {
+    if (!result?.must_have_skills) return;
+    extractionPanel.classList.remove('hidden');
+    document.getElementById('ep-title').textContent = result.job_title || '—';
+    document.getElementById('ep-exp').textContent   = result.minimum_years_experience || 0;
+
+    const mustEl = document.getElementById('ep-must-have');
+    mustEl.innerHTML = (result.must_have_skills || [])
+        .map(s => `<span>${escHtml(s)}</span>`).join('');
+
+    const disqEl = document.getElementById('ep-disqualifiers');
+    if (result.disqualifiers?.length) {
+        disqEl.innerHTML = result.disqualifiers.map(s => `<span>${escHtml(s)}</span>`).join('');
+    } else {
+        disqEl.innerHTML = `<span style="background:transparent;border:none;padding:0;color:rgba(255,255,255,.3)">None stated</span>`;
+    }
+}
+
+// ── CSV Download ──
 downloadBtn.addEventListener('click', () => {
-    if(rankedResults.length === 0) return;
-    
-    const headers = ["Rank", "Name", "Score", "Must-Have Match", "Missing Skills", "Disqualifiers", "Note"];
-    const rows = rankedResults.map(c => [
-        c.rank,
-        `"${c.name}"`,
-        c.total_score,
-        `"${c.matched_must_have_skills.join('; ')}"`,
-        `"${c.missing_must_have_skills.join('; ')}"`,
-        `"${c.disqualifiers_hit ? c.disqualifiers_hit.join('; ') : ''}"`,
-        `"${c.recruiter_note}"`
-    ]);
-    
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "intelligence_engine_results.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (!rankedResults.length) return;
+
+    const headers = [
+        'Rank','Name','Score',
+        'Core Skills Score','Exp Score','Nice-to-Have Score',
+        'Behavioral Score','Location Score','Notice Period Score','Disq Penalty',
+        'Matched Skills','Missing Skills','Disqualifiers','Note'
+    ];
+    const rows = rankedResults.map(c => {
+        const sb = c.score_breakdown;
+        return [
+            c.rank,
+            `"${c.name}"`,
+            c.total_score.toFixed(1),
+            sb.must_have_skills_score,
+            sb.experience_score,
+            sb.nice_to_have_score,
+            sb.behavioral_score,
+            sb.location_score,
+            sb.notice_period_score,
+            sb.disqualifier_penalty,
+            `"${(c.matched_must_have_skills || []).join('; ')}"`,
+            `"${(c.missing_must_have_skills || []).join('; ')}"`,
+            `"${(c.disqualifiers_hit || []).join('; ')}"`,
+            `"${c.recruiter_note.replace(/"/g,'""')}"`,
+        ];
+    });
+
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), {
+        href: url, download: 'ai_recruiter_results.csv'
+    });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 });
+
+// ── Helpers ──
+function setStatus(el, type, html) {
+    el.className  = `status-bar ${type}`;
+    el.innerHTML  = html;
+}
+function showError(msg) {
+    errorText.textContent = msg;
+    errorBanner.classList.remove('hidden');
+}
+function hideError() {
+    errorBanner.classList.add('hidden');
+}
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+}
