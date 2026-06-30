@@ -89,6 +89,9 @@ class CandidateExtractionService:
                             temperature=0.0,
                             max_output_tokens=4096,
                             response_mime_type="application/json",
+                            thinking_config=types.ThinkingConfig(
+                                thinking_budget=0
+                            ),
                         ),
                     )
 

@@ -47,6 +47,11 @@ class JDExtractionResult(BaseModel):
         example="Senior AI Engineer"
     )
 
+    extracted_raw_text: Optional[str] = Field(
+        default=None,
+        description="The raw text extracted from the uploaded file (if uploaded)."
+    )
+
     # ── Experience Requirement ────────────────────────────────
     minimum_years_experience: int = Field(
         ...,
@@ -178,6 +183,55 @@ class JDExtractionResult(BaseModel):
         if v.lower() not in allowed:
             return "medium"
         return v.lower()
+
+    @validator("job_title", pre=True, always=True)
+    def validate_job_title(cls, v):
+        if v is None or not str(v).strip():
+            return "Unknown Position"
+        return str(v).strip()
+
+    @validator("minimum_years_experience", pre=True, always=True)
+    def validate_min_exp(cls, v):
+        if v is None:
+            return 0
+        try:
+            return int(v)
+        except (ValueError, TypeError):
+            return 0
+
+    @validator(
+        "must_have_skills",
+        "nice_to_have_skills",
+        "behavioral_traits",
+        "domain_knowledge",
+        "disqualifiers",
+        "preferred_locations",
+        "preferred_company_types",
+        pre=True,
+        always=True
+    )
+    def validate_lists(cls, v):
+        if v is None:
+            return []
+        if not isinstance(v, list):
+            return [str(v)]
+        return [str(item) for item in v if item is not None]
+
+    @validator("key_responsibilities_summary", pre=True, always=True)
+    def validate_summary(cls, v):
+        if v is None or not str(v).strip():
+            return "No key responsibilities summary provided."
+        return str(v).strip()
+
+    @validator("remote_ok", pre=True, always=True)
+    def validate_remote_ok(cls, v):
+        if v is None:
+            return False
+        if isinstance(v, bool):
+            return v
+        if str(v).lower() in {"true", "1", "yes", "y"}:
+            return True
+        return False
 
     class Config:
         json_schema_extra = {

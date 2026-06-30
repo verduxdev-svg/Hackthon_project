@@ -13,7 +13,14 @@ from fastapi.testclient import TestClient
 
 from main import app
 
-client = TestClient(app)
+client = None
+
+@pytest.fixture(autouse=True, scope="module")
+def setup_lifespan():
+    global client
+    with TestClient(app) as c:
+        client = c
+        yield
 
 # ─────────────────────────────────────────────────────────────
 # Sample JDs for testing
@@ -78,7 +85,7 @@ class TestHealthEndpoint:
         assert "status" in data
         assert data["status"] == "healthy"
         assert "model" in data
-        assert "groq_api_key_configured" in data
+        assert "gemini_api_key_configured" in data
 
 
 class TestJDExtractionEndpoint:

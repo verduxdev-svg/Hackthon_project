@@ -160,6 +160,9 @@ class JDExtractionService:
             temperature=self.settings.LLM_TEMPERATURE,
             max_output_tokens=self.settings.LLM_MAX_TOKENS,
             response_mime_type="application/json",
+            thinking_config=types.ThinkingConfig(
+                thinking_budget=0
+            ),
         )
 
         # Configured model first, then fallbacks

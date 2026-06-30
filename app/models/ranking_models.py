@@ -60,6 +60,7 @@ class Candidate(BaseModel):
     career_history: Optional[list[CareerEntry]] = []
     skill_embeddings: Optional[list[float]] = None  # List of embedding vectors for candidate skills
     summary: Optional[str] = None              # Free-text professional summary
+    redrob_signals: Optional[RedrobSignals] = None
 
     def _extract_years_regex(self, text: str) -> int | None:
         """Extract years of experience from free‑text using a simple regex.

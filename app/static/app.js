@@ -166,10 +166,8 @@ async function processJdFile(file) {
         if (!res.ok) throw new Error();
         const result = await res.json();
 
-        // Read raw text for ranking payload
-        const reader = new FileReader();
-        reader.onload = e => { rawJdText = e.target.result; };
-        reader.readAsText(file);
+        // Set raw text from server-extracted result
+        rawJdText = result.extracted_raw_text || '';
 
         setStatus(jdFileStatus, 'success', `<i class="fa-solid fa-circle-check"></i> ${file.name} — intelligence extracted`);
         showExtractionPanel(result);
