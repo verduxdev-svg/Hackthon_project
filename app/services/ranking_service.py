@@ -217,8 +217,8 @@ class CandidateRankingService:
         """Encode a list of strings into embedding vectors using the shared model.
         Returns a NumPy array of shape (len(texts), embedding_dim)."""
         if not texts:
-            return np.zeros((0, self._embedder.get_sentence_embedding_dimension()))
-        return np.array(self._embedder.encode(texts, convert_to_numpy=True, normalize_embeddings=True))
+            return np.zeros((0, self._embedder.get_sentence_embedding_dimension()), dtype=np.float32)
+        return np.array(self._embedder.encode(texts, convert_to_numpy=True, normalize_embeddings=True), dtype=np.float32)
 
     def _ensure_candidate_embeddings(self, candidate: Candidate) -> np.ndarray:
         """Compute and cache skill embeddings for a candidate if not already present.
@@ -226,7 +226,7 @@ class CandidateRankingService:
         Returns a NumPy array of shape (num_skills, dim)."""
         if candidate.skill_embeddings is not None:
             # Assume already a list of floats; reshape to 2D array
-            return np.array(candidate.skill_embeddings).reshape(-1, self._embedder.get_sentence_embedding_dimension())
+            return np.array(candidate.skill_embeddings, dtype=np.float32).reshape(-1, self._embedder.get_sentence_embedding_dimension())
         # Gather skill strings
         skill_names = []
         if candidate.skills:

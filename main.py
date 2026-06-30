@@ -10,8 +10,18 @@ This file:
 """
 
 import os
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# Configure HuggingFace/Transformers offline mode.
+# Default to "0" (online) to allow automatic model download on first run.
+# Can be overridden by setting HF_HUB_OFFLINE=1 in the environment or .env file.
+hf_offline = os.getenv("HF_HUB_OFFLINE", "0")
+os.environ["HF_HUB_OFFLINE"] = hf_offline
+os.environ["TRANSFORMERS_OFFLINE"] = os.getenv("TRANSFORMERS_OFFLINE", hf_offline)
 
 import logging
 import sys

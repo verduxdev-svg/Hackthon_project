@@ -1,16 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Recruiter — Intelligent Candidate Discovery</title>
-  <meta name="description" content="AI-powered candidate ranking engine. Upload a JD, load candidates, and surface the top matches with full score transparency." />
+  <meta name="description"
+    content="AI-powered candidate ranking engine. Upload a JD, load candidates, and surface the top matches with full score transparency." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,700&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/style.css?v=2.0.0" />
 </head>
+
 <body>
 
   <!-- ── Background FX ── -->
@@ -35,7 +40,8 @@
         <a href="#section-jd" class="nav-link active">Job Description</a>
         <a href="#section-candidates" class="nav-link">Candidates</a>
         <a href="#section-run" class="nav-link">Analysis</a>
-        <a href="#section-results" class="nav-link" id="nav-results-link" style="opacity:.45;pointer-events:none">Results</a>
+        <a href="#section-results" class="nav-link" id="nav-results-link"
+          style="opacity:.45;pointer-events:none">Results</a>
       </div>
 
       <div class="nav-right">
@@ -65,85 +71,11 @@
   <!-- ══════════════════════════════════════════
        HERO
   ══════════════════════════════════════════ -->
-  <header class="hero-section">
-    <div class="hero-inner">
-
-      <div class="hero-badge">
-        <div class="badge-dot"></div>
-        <span>Powered by Gemini + Semantic Embeddings</span>
-      </div>
-
-      <h1 class="hero-headline">
-        Rank the <em class="grad-purple">Right</em> Candidates,<br/>
-        <span class="grad-teal">Not Just</span> the Visible Ones.
-      </h1>
-
-      <p class="hero-sub">
-        We surface the top candidates — from skills and experience to behavioural signals — with full scoring transparency and zero guesswork.
-      </p>
-
-      <div class="hero-actions">
-        <a href="#section-jd" class="btn-cta">
-          <i class="fa-solid fa-bolt-lightning"></i> Start Ranking
-        </a>
-        <a href="/docs" target="_blank" class="btn-ghost">
-          <i class="fa-solid fa-book-open"></i> View API Docs
-        </a>
-      </div>
-
-      <div class="hero-stat-strip">
-        <div class="hss-item">
-          <span class="hss-val grad-purple">6</span>
-          <span class="hss-label">Scoring Dimensions</span>
-        </div>
-        <div class="hss-sep"></div>
-        <div class="hss-item">
-          <span class="hss-val grad-teal">100</span>
-          <span class="hss-label">Max Score Points</span>
-        </div>
-        <div class="hss-sep"></div>
-        <div class="hss-item">
-          <span class="hss-val" style="color:#fff">0</span>
-          <span class="hss-label">Config Required</span>
-        </div>
-        <div class="hss-sep"></div>
-        <div class="hss-item">
-          <span class="hss-val grad-purple">AI</span>
-          <span class="hss-label">Semantic Matching</span>
-        </div>
-      </div>
-
-      <!-- Floating preview cards -->
-      <div class="hero-cards" aria-hidden="true">
-        <div class="hcard hcard-1">
-          <div class="hcard-rank">#1</div>
-          <div class="hcard-info">
-            <div class="hcard-name">Sarah Chen</div>
-            <div class="hcard-score">92.4 pts</div>
-          </div>
-          <div class="hcard-bar"><div class="hcard-fill" style="width:92%"></div></div>
-          <div class="hcard-skills">
-            <span>Python</span><span>ML</span><span>FastAPI</span>
-          </div>
-        </div>
-        <div class="hcard hcard-2">
-          <div class="hcard-rank">#2</div>
-          <div class="hcard-info">
-            <div class="hcard-name">Arjun Mehta</div>
-            <div class="hcard-score">87.1 pts</div>
-          </div>
-          <div class="hcard-bar"><div class="hcard-fill" style="width:87%"></div></div>
-          <div class="hcard-skills">
-            <span>NLP</span><span>PyTorch</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
 
   <!-- ══════════════════════════════════════════
        MAIN WORKFLOW
   ══════════════════════════════════════════ -->
+
   <main class="main-workflow">
 
     <!-- ─── STEP 1: JOB DESCRIPTION ─── -->
@@ -152,7 +84,8 @@
         <div class="step-chip"><span>01</span></div>
         <div>
           <h2 class="wf-title">Job Description</h2>
-          <p class="wf-sub">Provide the JD as raw text or upload a file. AI extracts all hiring signals automatically.</p>
+          <p class="wf-sub">Provide the JD as raw text or upload a file. AI extracts all hiring signals automatically.
+          </p>
         </div>
       </div>
 
@@ -187,7 +120,8 @@
                 <i class="fa-solid fa-cloud-arrow-up"></i>
               </div>
               <p class="dz-primary">Drag &amp; drop your JD file here</p>
-              <p class="dz-secondary">Supports <strong>.docx</strong>, <strong>.txt</strong>, and <strong>.json</strong></p>
+              <p class="dz-secondary">Supports <strong>.docx</strong>, <strong>.txt</strong>, and <strong>.json</strong>
+              </p>
               <button class="btn-dz" onclick="document.getElementById('jd-file-input').click()">
                 <i class="fa-solid fa-folder-open"></i> Browse Files
               </button>
@@ -239,7 +173,8 @@
         <div class="step-chip"><span>02</span></div>
         <div>
           <h2 class="wf-title">Candidate Pool</h2>
-          <p class="wf-sub">Upload a structured <code>.json</code> dataset or individual resume files. Multiple formats supported.</p>
+          <p class="wf-sub">Upload a structured <code>.json</code> dataset or individual resume files. Multiple formats
+            supported.</p>
         </div>
       </div>
 
@@ -260,7 +195,9 @@
               <i class="fa-solid fa-users"></i>
             </div>
             <p class="dz-primary">Drop candidate files here</p>
-            <p class="dz-secondary"><strong>.json</strong> dataset &nbsp;·&nbsp; multiple <strong>.docx</strong> or <strong>.txt</strong> resumes</p>
+            <p class="dz-secondary"><strong>.json</strong> dataset &nbsp;·&nbsp; multiple <strong>.docx</strong> or
+              <strong>.txt</strong> resumes
+            </p>
             <button class="btn-dz" onclick="document.getElementById('candidate-file-input').click()">
               <i class="fa-solid fa-folder-open"></i> Browse Files
             </button>
@@ -380,8 +317,8 @@
         <div class="rc-rank-num"></div>
         <div class="rc-ring-wrap">
           <svg class="rc-ring-svg" viewBox="0 0 64 64">
-            <circle class="rr-bg"  cx="32" cy="32" r="27"/>
-            <circle class="rr-arc" cx="32" cy="32" r="27"/>
+            <circle class="rr-bg" cx="32" cy="32" r="27" />
+            <circle class="rr-arc" cx="32" cy="32" r="27" />
           </svg>
           <div class="rc-ring-val"></div>
         </div>
@@ -406,20 +343,30 @@
 
         <div class="rcb-bars">
           <div class="rbar">
-            <div class="rbar-hd"><span class="rbar-label">Core Skills</span><span class="rbar-val skills-pts"></span></div>
-            <div class="rbar-track"><div class="rbar-fill rf-skills"></div></div>
+            <div class="rbar-hd"><span class="rbar-label">Core Skills</span><span class="rbar-val skills-pts"></span>
+            </div>
+            <div class="rbar-track">
+              <div class="rbar-fill rf-skills"></div>
+            </div>
           </div>
           <div class="rbar">
             <div class="rbar-hd"><span class="rbar-label">Experience</span><span class="rbar-val exp-pts"></span></div>
-            <div class="rbar-track"><div class="rbar-fill rf-exp"></div></div>
+            <div class="rbar-track">
+              <div class="rbar-fill rf-exp"></div>
+            </div>
           </div>
           <div class="rbar">
-            <div class="rbar-hd"><span class="rbar-label">Nice-to-Have</span><span class="rbar-val nice-pts"></span></div>
-            <div class="rbar-track"><div class="rbar-fill rf-nice"></div></div>
+            <div class="rbar-hd"><span class="rbar-label">Nice-to-Have</span><span class="rbar-val nice-pts"></span>
+            </div>
+            <div class="rbar-track">
+              <div class="rbar-fill rf-nice"></div>
+            </div>
           </div>
           <div class="rbar">
             <div class="rbar-hd"><span class="rbar-label">Behavioural</span><span class="rbar-val beh-pts"></span></div>
-            <div class="rbar-track"><div class="rbar-fill rf-beh"></div></div>
+            <div class="rbar-track">
+              <div class="rbar-fill rf-beh"></div>
+            </div>
           </div>
         </div>
 
@@ -441,6 +388,7 @@
     </article>
   </template>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=2.0.0"></script>
 </body>
+
 </html>
