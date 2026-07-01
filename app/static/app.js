@@ -1,16 +1,13 @@
-/* ══════════════════════════════════════════════════════════════
-   AI Recruiter — Frontend Logic (Dark Theme)
-   All API calls preserved · New UI class names aligned
-══════════════════════════════════════════════════════════════ */
+
 
 'use strict';
 
-// ── State ──
+
 let rawJdText = '';
 let uploadedCandidates = [];
 let rankedResults = [];
 
-// ── DOM refs ──
+
 const jdRawText       = document.getElementById('jd-raw-text');
 const charCount       = document.getElementById('char-count');
 const jdDropZone      = document.getElementById('jd-drop-zone');
@@ -39,19 +36,19 @@ const navResultsLink  = document.getElementById('nav-results-link');
 const mobileMenuBtn   = document.getElementById('mobile-menu-btn');
 const mobileDrawer    = document.getElementById('mobile-drawer');
 
-// ── Utility: close mobile menu ──
+
 function closeMobileMenu() {
     mobileDrawer.classList.add('hidden');
 }
 
-// ── Mobile menu toggle ──
+
 if (mobileMenuBtn) {
     mobileMenuBtn.addEventListener('click', () => {
         mobileDrawer.classList.toggle('hidden');
     });
 }
 
-// ── Active nav highlighting on scroll ──
+
 (function setupScrollSpy() {
     const links  = document.querySelectorAll('.nav-link');
     const anchors = ['section-jd','section-candidates','section-run','section-results'];
@@ -71,7 +68,7 @@ if (mobileMenuBtn) {
     });
 })();
 
-// ── Health Check ──
+
 (async function checkHealth() {
     const badge = document.getElementById('health-badge');
     const label = badge.querySelector('.hp-label');
@@ -87,7 +84,7 @@ if (mobileMenuBtn) {
     }
 })();
 
-// ── Tab Switcher ──
+
 document.querySelectorAll('.tsw-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.tsw-btn').forEach(b => b.classList.remove('active'));
@@ -98,7 +95,7 @@ document.querySelectorAll('.tsw-btn').forEach(btn => {
     });
 });
 
-// ── Character Counter ──
+
 if (jdRawText) {
     jdRawText.addEventListener('input', () => {
         const len = jdRawText.value.length;
@@ -114,7 +111,7 @@ function checkStep1Complete() {
     return ok;
 }
 
-// ── Drop Zone Utility ──
+
 function setupDropZone(zone, input, onFiles) {
     if (!zone) return;
     zone.addEventListener('click', e => {
@@ -137,7 +134,7 @@ function setupDropZone(zone, input, onFiles) {
     });
 }
 
-// ── JD Drop Zone Setup ──
+
 setupDropZone(jdDropZone, jdFileInput, files => processJdFile(files[0]));
 
 async function processJdFile(file) {
@@ -158,7 +155,6 @@ async function processJdFile(file) {
         return;
     }
 
-    // .docx / .txt → server extraction
     const fd = new FormData();
     fd.append('file', file);
     try {
@@ -166,7 +162,6 @@ async function processJdFile(file) {
         if (!res.ok) throw new Error();
         const result = await res.json();
 
-        // Set raw text from server-extracted result
         rawJdText = result.extracted_raw_text || '';
 
         setStatus(jdFileStatus, 'success', `<i class="fa-solid fa-circle-check"></i> ${file.name} — intelligence extracted`);
@@ -176,7 +171,7 @@ async function processJdFile(file) {
     }
 }
 
-// ── Candidate Drop Zone Setup ──
+
 setupDropZone(candidateDropZone, candidateFileInput, files => {
     Array.from(files).forEach(processCandidateFile);
 });
@@ -269,7 +264,7 @@ if (clearCandidatesBtn) {
     });
 }
 
-// ── Run Ranking ──
+
 runBtn.addEventListener('click', async () => {
     hideError();
 
@@ -287,17 +282,14 @@ runBtn.addEventListener('click', async () => {
 
     const shortlistSize = Math.min(Math.max(parseInt(shortlistSizeInput.value, 10) || 10, 1), 50);
 
-    // Show results section + loading
     sectionResults.classList.remove('hidden');
     loadingState.classList.remove('hidden');
     rankingResults.innerHTML = '';
     loadingTextEl.textContent = 'Extracting intelligence from job description…';
     runBtn.disabled = true;
 
-    // Scroll results into view
     setTimeout(() => sectionResults.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
 
-    // Unlock nav link
     if (navResultsLink) {
         navResultsLink.style.opacity = '1';
         navResultsLink.style.pointerEvents = 'auto';
@@ -347,7 +339,7 @@ runBtn.addEventListener('click', async () => {
     }
 });
 
-// ── Render Rankings ──
+
 function renderRanking(shortlist) {
     const tpl = document.getElementById('candidate-card-tpl');
     rankingResults.innerHTML = '';
@@ -356,7 +348,6 @@ function renderRanking(shortlist) {
         const clone = tpl.content.cloneNode(true);
         const card  = clone.querySelector('.result-card');
 
-        // Rank classes
         if (c.rank === 1) card.classList.add('rank-1');
         else if (c.rank === 2) card.classList.add('rank-2');
         else if (c.rank === 3) card.classList.add('rank-3');
@@ -364,7 +355,6 @@ function renderRanking(shortlist) {
 
         clone.querySelector('.rc-rank-num').textContent = `#${c.rank}`;
 
-        // Ring score
         const arc = clone.querySelector('.rr-arc');
         const rVal = clone.querySelector('.rc-ring-val');
         const score = Math.max(0, c.total_score);
@@ -373,7 +363,6 @@ function renderRanking(shortlist) {
         setTimeout(() => { arc.style.strokeDashoffset = offset; }, 60 + idx * 30);
         rVal.textContent = Math.round(score);
 
-        // Identity
         const initials = c.name.substring(0,2).toUpperCase();
         clone.querySelector('.rcb-avatar').textContent = initials;
         clone.querySelector('.rcb-name').textContent = c.name;
@@ -381,14 +370,12 @@ function renderRanking(shortlist) {
         clone.querySelector('.rcb-pts').textContent  = score.toFixed(1);
         clone.querySelector('.rcb-note').textContent = c.recruiter_note;
 
-        // Bars
         const sb = c.score_breakdown;
         setBar(clone, '.rf-skills', '.skills-pts', sb.must_have_skills_score, 40);
         setBar(clone, '.rf-exp',    '.exp-pts',    sb.experience_score,       20);
         setBar(clone, '.rf-nice',   '.nice-pts',   sb.nice_to_have_score,     15);
         setBar(clone, '.rf-beh',    '.beh-pts',    sb.behavioral_score,       10);
 
-        // Tags
         renderTags(clone, '.matched-skills', c.matched_must_have_skills);
 
         if (c.missing_must_have_skills?.length) {
@@ -422,7 +409,7 @@ function renderTags(clone, sel, items) {
     c.innerHTML = items.map(s => `<span>${escHtml(s)}</span>`).join('');
 }
 
-// ── Show Extraction Panel ──
+
 function showExtractionPanel(result) {
     if (!result?.must_have_skills) return;
     extractionPanel.classList.remove('hidden');
@@ -441,7 +428,7 @@ function showExtractionPanel(result) {
     }
 }
 
-// ── CSV Download ──
+
 downloadBtn.addEventListener('click', () => {
     if (!rankedResults.length) return;
 
@@ -483,7 +470,7 @@ downloadBtn.addEventListener('click', () => {
     URL.revokeObjectURL(url);
 });
 
-// ── Helpers ──
+
 function setStatus(el, type, html) {
     el.className  = `status-bar ${type}`;
     el.innerHTML  = html;

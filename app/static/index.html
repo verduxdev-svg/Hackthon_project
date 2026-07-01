@@ -18,7 +18,7 @@
 
 <body>
 
-  <!-- ── Background FX ── -->
+  
   <div class="bg-fx" aria-hidden="true">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
@@ -26,9 +26,7 @@
     <div class="grid-lines"></div>
   </div>
 
-  <!-- ══════════════════════════════════════════
-       NAV
-  ══════════════════════════════════════════ -->
+  
   <nav class="topnav">
     <div class="nav-inner">
       <a class="nav-brand" href="#">
@@ -60,7 +58,7 @@
     </div>
   </nav>
 
-  <!-- Mobile Nav Drawer -->
+  
   <div class="mobile-drawer hidden" id="mobile-drawer">
     <a href="#section-jd" class="md-link" onclick="closeMobileMenu()">Job Description</a>
     <a href="#section-candidates" class="md-link" onclick="closeMobileMenu()">Candidates</a>
@@ -68,17 +66,13 @@
     <a href="#section-results" class="md-link" onclick="closeMobileMenu()">Results</a>
   </div>
 
-  <!-- ══════════════════════════════════════════
-       HERO
-  ══════════════════════════════════════════ -->
+  
 
-  <!-- ══════════════════════════════════════════
-       MAIN WORKFLOW
-  ══════════════════════════════════════════ -->
+  
 
   <main class="main-workflow">
 
-    <!-- ─── STEP 1: JOB DESCRIPTION ─── -->
+    
     <section class="wf-section" id="section-jd">
       <div class="wf-label">
         <div class="step-chip"><span>01</span></div>
@@ -90,7 +84,7 @@
       </div>
 
       <div class="glass-card">
-        <!-- Tab Switcher -->
+        
         <div class="tab-switcher">
           <button class="tsw-btn active" data-tab="jd-text-panel" id="tab-text">
             <i class="fa-solid fa-pen-to-square"></i> Paste Text
@@ -100,7 +94,7 @@
           </button>
         </div>
 
-        <!-- Text Panel -->
+        
         <div class="tab-panel active" id="jd-text-panel">
           <div class="textarea-shell">
             <textarea id="jd-raw-text" class="dark-textarea"
@@ -112,7 +106,7 @@
           </div>
         </div>
 
-        <!-- File Panel -->
+        
         <div class="tab-panel" id="jd-file-panel">
           <div class="dropzone" id="jd-drop-zone">
             <div class="dz-content">
@@ -131,7 +125,7 @@
           <div class="status-bar" id="jd-file-status"></div>
         </div>
 
-        <!-- Extraction Preview (hidden until ready) -->
+        
         <div class="extraction-panel hidden" id="extraction-preview">
           <div class="ep-strip">
             <div class="ep-icon"><i class="fa-solid fa-microchip"></i></div>
@@ -167,7 +161,7 @@
       </div>
     </section>
 
-    <!-- ─── STEP 2: CANDIDATE POOL ─── -->
+    
     <section class="wf-section" id="section-candidates">
       <div class="wf-label">
         <div class="step-chip"><span>02</span></div>
@@ -209,7 +203,7 @@
       </div>
     </section>
 
-    <!-- ─── STEP 3: CONFIGURE & RUN ─── -->
+    
     <section class="wf-section" id="section-run">
       <div class="wf-label">
         <div class="step-chip"><span>03</span></div>
@@ -264,7 +258,7 @@
       </div>
     </section>
 
-    <!-- ─── STEP 4: RESULTS ─── -->
+    
     <section class="wf-section hidden" id="section-results">
       <div class="wf-label">
         <div class="step-chip step-chip-gold"><i class="fa-solid fa-trophy"></i></div>
@@ -274,7 +268,7 @@
         </div>
       </div>
 
-      <!-- Loading -->
+      
       <div class="loading-shell hidden" id="loading-state">
         <div class="ls-inner">
           <div class="ls-rings">
@@ -288,13 +282,13 @@
         </div>
       </div>
 
-      <!-- Results -->
+      
       <div id="ranking-results" class="results-list"></div>
     </section>
 
   </main>
 
-  <!-- Footer -->
+  
   <footer class="site-footer">
     <div class="sf-inner">
       <div class="sf-brand">
@@ -310,7 +304,7 @@
     </div>
   </footer>
 
-  <!-- ══ CANDIDATE RESULT CARD TEMPLATE ══ -->
+  
   <template id="candidate-card-tpl">
     <article class="result-card">
       <div class="rc-left">

@@ -1,54 +1,50 @@
-/* ══════════════════════════════════════════════════════════════
-   AI Recruiter — Claymorphism UI
-   Palette : Soft pastels · Lavender · Peach · Mint · Sky · Cream
-   Style   : Clay cards · Thick rounded corners · Soft inner glow
-══════════════════════════════════════════════════════════════ */
+
 
 @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
-/* ── Design Tokens ── */
+
 :root {
-  /* Page background — warm cream */
+  
   --bg-root: #F5F0FF;
   --bg-surface: #FAF7FF;
 
-  /* Pastel Palette */
+  
   --lavender: #C4B5FD;
-  /* violet-300  */
+  
   --lavender-d: #8B5CF6;
-  /* violet-500  */
+  
   --lavender-dk: #6D28D9;
-  /* violet-700  */
+  
   --peach: #FED7AA;
-  /* orange-200  */
+  
   --peach-d: #FB923C;
-  /* orange-400  */
+  
   --mint: #A7F3D0;
-  /* emerald-200 */
+  
   --mint-d: #34D399;
-  /* emerald-400 */
+  
   --mint-dk: #059669;
-  /* emerald-600 */
+  
   --sky: #BAE6FD;
-  /* sky-200     */
+  
   --sky-d: #38BDF8;
-  /* sky-400     */
+  
   --rose: #FECDD3;
-  /* rose-200    */
+  
   --rose-d: #FB7185;
-  /* rose-400    */
+  
   --yellow: #FEF08A;
-  /* yellow-200  */
+  
   --yellow-d: #FACC15;
-  /* yellow-400  */
+  
 
-  /* Neutral Text */
+  
   --text-1: #1E1535;
   --text-2: #4B3E72;
   --text-3: #8070A8;
   --text-4: #B8ACD4;
 
-  /* Clay card backgrounds */
+  
   --clay-white: #FFFFFF;
   --clay-lavender: #EDE9FE;
   --clay-peach: #FFF3E8;
@@ -57,7 +53,7 @@
   --clay-rose: #FFF1F3;
   --clay-yellow: #FEFCE8;
 
-  /* Clay shadows — the defining feature of claymorphism */
+  
   --shadow-clay: 0 8px 32px rgba(139, 92, 246, 0.14), 0 2px 8px rgba(139, 92, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   --shadow-clay-sm: 0 4px 16px rgba(139, 92, 246, 0.10), 0 1px 4px rgba(139, 92, 246, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   --shadow-clay-lg: 0 16px 48px rgba(139, 92, 246, 0.18), 0 4px 16px rgba(139, 92, 246, 0.10), inset 0 2px 0 rgba(255, 255, 255, 0.95);
@@ -65,14 +61,14 @@
   --shadow-btn-mint: 0 6px 20px rgba(5, 150, 105, 0.25), 0 2px 6px rgba(5, 150, 105, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   --shadow-btn-rose: 0 6px 20px rgba(244, 63, 94, 0.25), 0 2px 6px rgba(244, 63, 94, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 
-  /* Borders */
+  
   --border-clay: rgba(196, 181, 253, 0.45);
   --border-mint: rgba(52, 211, 153, 0.40);
   --border-rose: rgba(251, 113, 133, 0.40);
   --border-peach: rgba(251, 146, 60, 0.35);
   --border-sky: rgba(56, 189, 248, 0.40);
 
-  /* Radius — exaggerated for clay style */
+  
   --r-sm: 10px;
   --r-md: 16px;
   --r-lg: 24px;
@@ -80,7 +76,7 @@
   --r-2xl: 40px;
   --r-pill: 999px;
 
-  /* Spacing */
+  
   --s1: 4px;
   --s2: 8px;
   --s3: 12px;
@@ -93,17 +89,17 @@
   --s16: 64px;
   --s20: 80px;
 
-  /* Fonts */
+  
   --f-body: 'Nunito', system-ui, sans-serif;
   --f-head: 'Plus Jakarta Sans', system-ui, sans-serif;
 
-  /* Transitions */
+  
   --t: 0.18s ease;
   --t-md: 0.30s ease;
   --t-slow: 0.55s cubic-bezier(.4, 0, .2, 1);
 }
 
-/* ── Reset ── */
+
 *,
 *::before,
 *::after {
@@ -163,9 +159,7 @@ code {
   border: 1px solid var(--border-clay);
 }
 
-/* ══════════════════════════════════════════
-   FLOATING BLOBS (subtle background)
-══════════════════════════════════════════ */
+
 .bg-fx {
   position: fixed;
   inset: 0;
@@ -212,9 +206,7 @@ code {
   display: none;
 }
 
-/* ══════════════════════════════════════════
-   NAVIGATION
-══════════════════════════════════════════ */
+
 .topnav {
   position: fixed;
   top: 12px;
@@ -422,9 +414,7 @@ code {
   color: var(--lavender-dk);
 }
 
-/* ══════════════════════════════════════════
-   HERO
-══════════════════════════════════════════ */
+
 .hero-section {
   position: relative;
   z-index: 1;
@@ -563,7 +553,7 @@ code {
   transform: translateY(-2px);
 }
 
-/* Stat Strip */
+
 .hero-stat-strip {
   display: flex;
   align-items: center;
@@ -608,7 +598,7 @@ code {
   border-radius: 2px;
 }
 
-/* Hero floating preview cards */
+
 .hero-cards {
   display: flex;
   gap: var(--s4);
@@ -708,9 +698,7 @@ code {
   border: 1.5px solid rgba(196, 181, 253, 0.60);
 }
 
-/* ══════════════════════════════════════════
-   MAIN WORKFLOW
-══════════════════════════════════════════ */
+
 .main-workflow {
   position: relative;
   z-index: 1;
@@ -780,9 +768,7 @@ code {
   line-height: 1.65;
 }
 
-/* ══════════════════════════════════════════
-   CLAY CARD — the signature component
-══════════════════════════════════════════ */
+
 .glass-card {
   background: rgba(255, 255, 255, 0.82);
   border: 2px solid rgba(196, 181, 253, 0.40);
@@ -803,9 +789,7 @@ code {
   transform: translateY(-2px);
 }
 
-/* ══════════════════════════════════════════
-   TAB SWITCHER
-══════════════════════════════════════════ */
+
 .tab-switcher {
   display: flex;
   gap: var(--s2);
@@ -851,9 +835,7 @@ code {
   display: block;
 }
 
-/* ══════════════════════════════════════════
-   TEXTAREA
-══════════════════════════════════════════ */
+
 .textarea-shell {
   display: flex;
   flex-direction: column;
@@ -909,9 +891,7 @@ code {
   font-weight: 500;
 }
 
-/* ══════════════════════════════════════════
-   DROP ZONE
-══════════════════════════════════════════ */
+
 .dropzone {
   border: 2.5px dashed rgba(196, 181, 253, 0.50);
   border-radius: var(--r-xl);
@@ -968,9 +948,7 @@ code {
   font-weight: 500;
 }
 
-/* ══════════════════════════════════════════
-   BUTTONS (forms)
-══════════════════════════════════════════ */
+
 .btn-dz {
   display: inline-flex;
   align-items: center;
@@ -993,7 +971,7 @@ code {
   box-shadow: var(--shadow-btn);
 }
 
-/* Status Bar */
+
 .status-bar {
   display: flex;
   align-items: center;
@@ -1030,9 +1008,7 @@ code {
   box-shadow: var(--shadow-clay-sm);
 }
 
-/* ══════════════════════════════════════════
-   EXTRACTION PANEL
-══════════════════════════════════════════ */
+
 .extraction-panel {
   background: rgba(237, 233, 254, 0.60);
   border: 2px solid rgba(196, 181, 253, 0.50);
@@ -1187,9 +1163,7 @@ code {
   box-shadow: 0 2px 4px rgba(251, 113, 133, 0.08);
 }
 
-/* ══════════════════════════════════════════
-   CANDIDATE POOL
-══════════════════════════════════════════ */
+
 .cpool-header {
   display: flex;
   align-items: center;
@@ -1345,9 +1319,7 @@ code {
   border-radius: 3px;
 }
 
-/* ══════════════════════════════════════════
-   CONFIG + RUN
-══════════════════════════════════════════ */
+
 .config-panel {
   display: flex;
   flex-direction: column;
@@ -1555,9 +1527,7 @@ code {
   animation: slideUp .25s ease;
 }
 
-/* ══════════════════════════════════════════
-   LOADING
-══════════════════════════════════════════ */
+
 .loading-shell {
   background: rgba(255, 255, 255, 0.82);
   border: 2px solid rgba(196, 181, 253, 0.45);
@@ -1631,9 +1601,7 @@ code {
   font-weight: 500;
 }
 
-/* ══════════════════════════════════════════
-   RESULT CARDS
-══════════════════════════════════════════ */
+
 .results-list {
   display: flex;
   flex-direction: column;
@@ -1671,7 +1639,7 @@ code {
   border-color: rgba(251, 113, 133, 0.40);
 }
 
-/* Left column */
+
 .rc-left {
   width: 90px;
   min-width: 90px;
@@ -1710,7 +1678,7 @@ code {
   color: #a78bfa;
 }
 
-/* Ring SVG */
+
 .rc-ring-wrap {
   position: relative;
   width: 52px;
@@ -1754,7 +1722,7 @@ code {
   color: var(--text-1);
 }
 
-/* Body */
+
 .rc-body {
   flex: 1;
   padding: var(--s6) var(--s8);
@@ -1847,7 +1815,7 @@ code {
   background: rgba(255, 243, 232, 0.60);
 }
 
-/* Bars */
+
 .rcb-bars {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1909,7 +1877,7 @@ code {
   background: linear-gradient(90deg, var(--sky-d), #0ea5e9);
 }
 
-/* Tag Rows */
+
 .rcb-tag-grid {
   display: flex;
   flex-wrap: wrap;
@@ -1978,9 +1946,7 @@ code {
   border: 1.5px solid rgba(251, 113, 133, 0.40);
 }
 
-/* ══════════════════════════════════════════
-   FOOTER
-══════════════════════════════════════════ */
+
 .site-footer {
   position: relative;
   z-index: 1;
@@ -2034,16 +2000,12 @@ code {
   font-weight: 500;
 }
 
-/* ══════════════════════════════════════════
-   UTILITIES
-══════════════════════════════════════════ */
+
 .hidden {
   display: none !important;
 }
 
-/* ══════════════════════════════════════════
-   ANIMATIONS
-══════════════════════════════════════════ */
+
 @keyframes orbFloat {
 
   0%,
@@ -2108,9 +2070,7 @@ code {
   }
 }
 
-/* ══════════════════════════════════════════
-   RESPONSIVE
-══════════════════════════════════════════ */
+
 @media (max-width: 900px) {
   .nav-links {
     display: none;

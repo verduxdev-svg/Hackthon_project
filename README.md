@@ -197,6 +197,19 @@ The `JDExtractionResult` JSON is your **ranking specification**. Phase 2 will:
 
 ---
 
+## ⚡ Latency & Performance Benchmarks
+
+The following benchmarks are measured on local execution:
+
+*   **Phase 1: Structured JD Extraction (Gemini API):** **~4.4 seconds**
+    *   Powered by Google Gemini `gemini-2.5-flash` in JSON mode.
+*   **Phase 2: Candidate Ranking Engine (SentenceTransformers + Heuristics):**
+    *   **Cold Start (One-time load at startup):** **~30 seconds** (loads PyTorch + `all-MiniLM-L6-v2` weights from local cache into memory).
+    *   **Warm Query (Scoring calculation latency):** **< 10ms** (for 10 candidates) or **< 100ms** (for 50 candidates) because the service is initialized once at startup as a singleton.
+*   **Total End-to-End Warm Latency:** **~4.5 seconds** (fully dominated by the Gemini extraction call, with virtually zero overhead during ranking).
+
+---
+
 ---
 
 ## 📊 Presentation & Slide Deck Reference (Redrob PPT Template)
@@ -261,10 +274,11 @@ This section maps **exactly** to the structure and questions of the official Red
         *   `CandidateLoaderService` managing candidate data and caching computed embeddings.
 
 ### Slide 8: Results & Performance
-*   **Ranking Insights:** Effectively surfaces top-suited candidates (e.g. Arjun Mehta, Priya Sharma) matching complex NLP and vector database criteria, while penalizing unqualified profiles or those matching disqualifiers.
+*   **Ranking Insights:** Successfully identifies high-fit matches (e.g., Arjun Mehta, Priya Sharma) with semantic skill matches, while instantly penalizing unqualified/suspicious resumes using negative constraints.
 *   **Performance & Constraints:**
-    *   Ranks 50+ candidates in less than **100ms** on standard CPU.
-    *   Minimal memory footprint and low operational costs (zero ongoing API fees during ranking).
+    *   **Phase 1 JD Extraction Latency:** **~4.4 seconds** (Google Gemini 2.5 Flash API).
+    *   **Phase 2 Scoring Latency:** **< 10ms** (for 10 candidates) or **< 100ms** (for 50 candidates) on standard CPU.
+    *   **Startup Overhead:** One-time cold start model load of **~30 seconds** (model is cached and run locally in memory via FastAPI lifespan singleton).
 
 ### Slide 9: Technologies Used
 *   **FastAPI:** High performance, asynchronous endpoints, auto-OpenAPI documentation.
