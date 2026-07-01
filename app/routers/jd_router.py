@@ -27,7 +27,7 @@ def get_extraction_service(request: Request) -> JDExtractionService:
     """
     Pulls the singleton JDExtractionService from app.state.
     The service is initialized ONCE at startup in main.py lifespan.
-    This avoids creating a new Groq client on every request (major perf fix).
+    This avoids creating a new Gemini client on every request (major perf fix).
     """
     return request.app.state.extraction_service
 
@@ -59,7 +59,7 @@ async def extract_job_description(
     **How it works:**
     1. Validates the input text is non-empty (≥50 chars)
     2. Assembles a surgical extraction prompt
-    3. Calls Groq Cloud API (Llama 3.3 70B) with JSON mode enforced
+    3. Calls Google Gemini API (gemini-2.5-flash) with JSON mode enforced
     4. Validates the response against the JDExtractionResult Pydantic schema
     5. Returns the clean, validated JSON
 

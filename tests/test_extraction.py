@@ -90,7 +90,7 @@ class TestHealthEndpoint:
 
 class TestJDExtractionEndpoint:
     def test_extract_jd_returns_200(self):
-        """Full integration test — requires a real GROQ_API_KEY in .env"""
+        """Full integration test — requires a real GEMINI_API_KEY in .env"""
         response = client.post(
             "/api/extract-jd",
             json={"raw_jd_text": HACKATHON_JD_SAMPLE}

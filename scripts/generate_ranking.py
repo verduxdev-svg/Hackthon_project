@@ -160,7 +160,7 @@ async def run_pipeline(jd_text: str, candidates: list[Candidate], shortlist_size
 
     print(f"\n{'='*60}")
     print("  AI Recruiter — Hackathon Submission Pipeline")
-    print(f"  Model: {settings.GROQ_MODEL}")
+    print(f"  Model: {settings.GEMINI_MODEL}")
     print(f"  Candidates: {len(candidates)}")
     print(f"  Shortlist size: {shortlist_size}")
     print(f"{'='*60}\n")
