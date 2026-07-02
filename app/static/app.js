@@ -184,13 +184,63 @@ async function processCandidateFile(file) {
                 const data = JSON.parse(e.target.result);
                 let cands = data.candidates || data.data || data;
                 if (!Array.isArray(cands)) cands = [cands];
+                let count = 0;
                 cands.forEach(c => {
+                    normalizeCandidateJS(c);
                     uploadedCandidates.push(c);
-                    addCandidateRow(c.name || 'Unknown Candidate', file.name, 'ok');
+                    count++;
                 });
+                addCandidateRow(`Loaded ${count} candidates`, file.name, 'ok');
                 updateCandidateCount();
             } catch (err) {
                 console.error('Invalid JSON:', err);
+                addCandidateRow('Failed parsing JSON file', file.name, 'error');
+            }
+        };
+        reader.readAsText(file);
+        return;
+    }
+
+    if (file.name.endsWith('.jsonl')) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const lines = e.target.result.split('\n');
+                let count = 0;
+                lines.forEach(line => {
+                    if (line.trim()) {
+                        const c = JSON.parse(line);
+                        normalizeCandidateJS(c);
+                        uploadedCandidates.push(c);
+                        count++;
+                    }
+                });
+                addCandidateRow(`Loaded ${count} candidates`, file.name, 'ok');
+                updateCandidateCount();
+            } catch (err) {
+                console.error('Invalid JSONL:', err);
+                addCandidateRow('Failed parsing JSONL file', file.name, 'error');
+            }
+        };
+        reader.readAsText(file);
+        return;
+    }
+
+    if (file.name.endsWith('.csv')) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const text = e.target.result;
+                const candidates = parseCSV(text);
+                candidates.forEach(c => {
+                    normalizeCandidateJS(c);
+                    uploadedCandidates.push(c);
+                });
+                addCandidateRow(`Loaded ${candidates.length} candidates`, file.name, 'ok');
+                updateCandidateCount();
+            } catch (err) {
+                console.error('Invalid CSV:', err);
+                addCandidateRow('Failed parsing CSV file', file.name, 'error');
             }
         };
         reader.readAsText(file);
@@ -199,7 +249,6 @@ async function processCandidateFile(file) {
 
     const rowId = `cand-${Date.now()}-${Math.random().toString(36).slice(2,5)}`;
     addCandidateRow(`Parsing ${file.name}…`, file.name, 'loading', rowId);
-
     const fd = new FormData();
     fd.append('file', file);
     try {
@@ -489,4 +538,155 @@ function escHtml(str) {
         .replace(/</g,'&lt;')
         .replace(/>/g,'&gt;')
         .replace(/"/g,'&quot;');
+}
+
+function parseCSV(text) {
+    const lines = [];
+    let row = [""];
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        const next = text[i+1];
+        if (c === '"') {
+            if (inQuotes && next === '"') {
+                row[row.length - 1] += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (c === ',' && !inQuotes) {
+            row.push('');
+        } else if ((c === '\r' || c === '\n') && !inQuotes) {
+            if (c === '\r' && next === '\n') {
+                i++;
+            }
+            lines.push(row);
+            row = [''];
+        } else {
+            row[row.length - 1] += c;
+        }
+    }
+    if (row.length > 1 || row[0] !== '') {
+        lines.push(row);
+    }
+    if (lines.length === 0) return [];
+    const headers = lines[0].map(h => h.trim());
+    const candidates = [];
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.length < headers.length) continue;
+        const candidate = {};
+        const profile = {};
+        const redrob_signals = {};
+        const skills = [];
+        const career_history = [];
+        for (let j = 0; j < headers.length; j++) {
+            const col = headers[j];
+            let val = line[j];
+            if (val === undefined || val === null) continue;
+            val = val.trim();
+            if (val === "") continue;
+            let parsedVal = null;
+            if ((val.startsWith('{') && val.endsWith('}')) || (val.startsWith('[') && val.endsWith(']'))) {
+                try {
+                    parsedVal = JSON.parse(val);
+                } catch (e) {}
+            }
+            if (parsedVal !== null) {
+                if (col === 'profile') Object.assign(profile, parsedVal);
+                else if (col === 'redrob_signals') Object.assign(redrob_signals, parsedVal);
+                else if (col === 'skills' && Array.isArray(parsedVal)) skills.push(...parsedVal);
+                else if (col === 'career_history' && Array.isArray(parsedVal)) career_history.push(...parsedVal);
+                else candidate[col] = parsedVal;
+                continue;
+            }
+            if (col.includes('.')) {
+                const parts = col.split('.');
+                const parent = parts[0];
+                const child = parts[1];
+                if (parent === 'profile') profile[child] = parseValJS(val);
+                else if (parent === 'redrob_signals') redrob_signals[child] = parseValJS(val);
+                continue;
+            }
+            if (['candidate_id', 'name', 'summary'].includes(col)) {
+                candidate[col] = val;
+            } else if (col === 'skills') {
+                const delim = val.includes(';') ? ';' : ',';
+                const items = val.split(delim).map(s => s.trim()).filter(s => s);
+                items.forEach(s => {
+                    skills.push({ name: s, proficiency: 'intermediate', years: 0.0 });
+                });
+            } else if (col === 'profile_location') {
+                profile.location = val;
+            } else if (col === 'years_of_experience') {
+                const num = parseFloat(val);
+                if (!isNaN(num)) profile.years_of_experience = num;
+            } else if (col === 'willing_to_relocate') {
+                profile.willing_to_relocate = ['true', '1', 'yes', 'y'].includes(val.toLowerCase());
+            } else if (col === 'current_industry') {
+                profile.current_industry = val;
+            } else if (col === 'education_tier') {
+                profile.education_tier = val;
+            } else if (col === 'notice_period_days') {
+                const num = parseInt(val, 10);
+                if (!isNaN(num)) redrob_signals.notice_period_days = num;
+            } else if (col === 'open_to_work') {
+                redrob_signals.open_to_work_flag = ['true', '1', 'yes', 'y'].includes(val.toLowerCase());
+            } else {
+                candidate[col] = parseValJS(val);
+            }
+        }
+        if (Object.keys(profile).length > 0) candidate.profile = profile;
+        if (Object.keys(redrob_signals).length > 0) candidate.redrob_signals = redrob_signals;
+        if (skills.length > 0) candidate.skills = skills;
+        if (career_history.length > 0) candidate.career_history = career_history;
+        candidates.push(candidate);
+    }
+    return candidates;
+}
+
+function parseValJS(val) {
+    const lower = val.toLowerCase();
+    if (['true', 'yes', 'y'].includes(lower)) return true;
+    if (['false', 'no', 'n'].includes(lower)) return false;
+    const num = Number(val);
+    if (!isNaN(num)) return num;
+    return val;
+}
+
+function normalizeCandidateJS(c) {
+    if (!c.name && c.profile) {
+        c.name = c.profile.anonymized_name || c.profile.name || "Unknown Candidate";
+    }
+    if (!c.name) c.name = "Unknown Candidate";
+    if (c.skills && Array.isArray(c.skills)) {
+        c.skills.forEach(s => {
+            if (s.years === undefined && s.duration_months !== undefined) {
+                s.years = parseFloat((s.duration_months / 12.0).toFixed(2));
+            }
+        });
+    }
+    if (c.profile && c.redrob_signals && c.profile.willing_to_relocate === undefined) {
+        if (c.redrob_signals.willing_to_relocate !== undefined) {
+            c.profile.willing_to_relocate = c.redrob_signals.willing_to_relocate;
+        }
+    }
+    if (c.profile && c.education && Array.isArray(c.education) && c.education.length > 0) {
+        if (c.profile.education_tier === undefined && c.education[0].tier !== undefined) {
+            c.profile.education_tier = c.education[0].tier;
+        }
+    }
+    if (c.redrob_signals && c.redrob_signals.last_active_days_ago === undefined) {
+        const activeDateStr = c.redrob_signals.last_active_date;
+        if (activeDateStr) {
+            try {
+                const activeDate = new Date(activeDateStr);
+                const today = new Date("2026-07-01");
+                const diffTime = today - activeDate;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                c.redrob_signals.last_active_days_ago = Math.max(0, diffDays);
+            } catch (e) {}
+        }
+    }
+    return c;
 }

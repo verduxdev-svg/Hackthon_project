@@ -13,23 +13,149 @@ class CandidateRankingService:
 
     def __init__(self):
         self._embedder = SentenceTransformer('all-MiniLM-L6-v2')
+        self._embeddings_cache = {}
         logger.info('CandidateRankingService initialized with SentenceTransformer')
 
     def rank(self, jd: JDExtractionResult, candidates: list[Candidate], shortlist_size: int=10) -> RankingResponse:
         logger.info(f"Ranking {len(candidates)} candidates for '{jd.job_title}' | shortlist_size={shortlist_size}")
-        scored: list[tuple[float, RankedCandidate]] = []
-        for candidate in candidates:
-            ranked = self._score_candidate(candidate, jd)
-            scored.append((ranked.total_score, ranked))
-        scored.sort(key=lambda x: x[0], reverse=True)
+        must_jd_embs = self._encode_texts(jd.must_have_skills)
+        nice_jd_embs = self._encode_texts(jd.nice_to_have_skills)
+        running_top = []
+        disqualified_count = 0
+        total_evaluated = 0
+        chunk = []
+        chunk_size = 5000
+        for cand in candidates:
+            chunk.append(cand)
+            if len(chunk) >= chunk_size:
+                disqualified_count += self._process_chunk(chunk, jd, must_jd_embs, nice_jd_embs, running_top, shortlist_size)
+                total_evaluated += len(chunk)
+                chunk = []
+        if chunk:
+            disqualified_count += self._process_chunk(chunk, jd, must_jd_embs, nice_jd_embs, running_top, shortlist_size)
+            total_evaluated += len(chunk)
+        running_top.sort(key=lambda x: x[0], reverse=True)
         ranked_list = []
-        for i, (_, rc) in enumerate(scored):
-            rc.rank = i + 1
+        for rank_idx, (score, candidate, raw_data) in enumerate(running_top[:shortlist_size]):
+            breakdown = ScoreBreakdown(
+                must_have_skills_score=round(raw_data['must_score'], 2),
+                experience_score=round(raw_data['exp_score'], 2),
+                nice_to_have_score=round(raw_data['nice_score'], 2),
+                behavioral_score=round(raw_data['behavioral_score'], 2),
+                location_score=round(raw_data['location_score'], 2),
+                notice_period_score=round(raw_data['notice_score'], 2),
+                disqualifier_penalty=round(-raw_data['disq_penalty'], 2),
+                total_score=round(score, 2)
+            )
+            note = self._generate_recruiter_note(
+                candidate, score, raw_data['must_matched'], raw_data['must_missing'], raw_data['disqualifiers_hit']
+            )
+            rc = RankedCandidate(
+                rank=rank_idx + 1,
+                candidate_id=candidate.candidate_id,
+                name=candidate.name,
+                total_score=round(score, 2),
+                score_breakdown=breakdown,
+                matched_must_have_skills=raw_data['must_matched'],
+                missing_must_have_skills=raw_data['must_missing'],
+                matched_nice_to_have=raw_data['nice_matched'],
+                disqualifiers_hit=raw_data['disqualifiers_hit'],
+                recruiter_note=note
+            )
             ranked_list.append(rc)
-        disqualified_count = sum((1 for _, rc in scored if rc.disqualifiers_hit))
-        shortlist = ranked_list[:shortlist_size]
-        logger.info(f"Ranking complete | top_candidate='{shortlist[0].name}' (score={shortlist[0].total_score:.1f}) | disqualified={disqualified_count}")
-        return RankingResponse(job_title=jd.job_title, total_candidates_evaluated=len(candidates), shortlist=shortlist, disqualified_count=disqualified_count, extraction_confidence=jd.extraction_confidence, ranking_metadata={'weights': WEIGHTS, 'fuzzy_threshold': FUZZY_THRESHOLD, 'disqualifier_penalty_per_hit': DISQUALIFIER_PENALTY, 'shortlist_size': shortlist_size})
+        logger.info(f"Ranking complete | top_candidate='{ranked_list[0].name if ranked_list else None}' (score={ranked_list[0].total_score if ranked_list else 0.0}) | disqualified={disqualified_count}")
+        return RankingResponse(
+            job_title=jd.job_title,
+            total_candidates_evaluated=total_evaluated,
+            shortlist=ranked_list,
+            disqualified_count=disqualified_count,
+            extraction_confidence=jd.extraction_confidence,
+            ranking_metadata={'weights': WEIGHTS, 'fuzzy_threshold': FUZZY_THRESHOLD, 'disqualifier_penalty_per_hit': DISQUALIFIER_PENALTY, 'shortlist_size': shortlist_size}
+        )
+
+    def _process_chunk(self, chunk: list[Candidate], jd: JDExtractionResult, must_jd_embs: np.ndarray, nice_jd_embs: np.ndarray, running_top: list, shortlist_size: int) -> int:
+        self._pre_encode_candidates(chunk)
+        chunk_disq = 0
+        chunk_scored = []
+        for candidate in chunk:
+            raw_data = self._fast_score_candidate(candidate, jd, must_jd_embs, nice_jd_embs)
+            if raw_data['total'] <= 0.0:
+                continue
+            if raw_data['disqualifiers_hit']:
+                chunk_disq += 1
+            chunk_scored.append((raw_data['total'], candidate, raw_data))
+        running_top.extend(chunk_scored)
+        running_top.sort(key=lambda x: x[0], reverse=True)
+        del running_top[max(shortlist_size * 2, 500):]
+        return chunk_disq
+
+    def _pre_encode_candidates(self, candidates: list[Candidate]):
+        texts_to_encode = set()
+        candidates_to_process = []
+        for cand in candidates:
+            if cand.skill_embeddings is None and cand.candidate_id in self._embeddings_cache:
+                cand.skill_embeddings = self._embeddings_cache[cand.candidate_id]
+            if cand.skill_embeddings is None:
+                skill_names = []
+                if cand.skills:
+                    skill_names.extend([s.name for s in cand.skills if s.name])
+                if cand.summary:
+                    skill_names.append(cand.summary)
+                if skill_names:
+                    texts_to_encode.update(skill_names)
+                    candidates_to_process.append((cand, skill_names))
+        if not texts_to_encode:
+            return
+        texts_list = list(texts_to_encode)
+        embeddings_dict = {}
+        batch_size = 2048
+        for i in range(0, len(texts_list), batch_size):
+            chunk = texts_list[i : i + batch_size]
+            encoded = self._embedder.encode(
+                chunk,
+                batch_size=256,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+                show_progress_bar=False
+            )
+            for text, emb in zip(chunk, encoded):
+                embeddings_dict[text] = emb.astype(np.float32)
+        for cand, skill_names in candidates_to_process:
+            cand_embs = []
+            for name in skill_names:
+                if name in embeddings_dict:
+                    cand_embs.append(embeddings_dict[name])
+            if cand_embs:
+                stacked = np.stack(cand_embs)
+                cand.skill_embeddings = stacked.flatten().tolist()
+                self._embeddings_cache[cand.candidate_id] = cand.skill_embeddings
+            else:
+                cand.skill_embeddings = []
+                self._embeddings_cache[cand.candidate_id] = []
+
+    def _fast_score_candidate(self, candidate: Candidate, jd: JDExtractionResult, must_jd_embs: np.ndarray, nice_jd_embs: np.ndarray) -> dict:
+        must_matched, must_missing, must_score = self._score_skills_precomputed(jd.must_have_skills, must_jd_embs, candidate, max_points=WEIGHTS['must_have_skills'])
+        exp_score = self._score_experience(candidate, jd)
+        nice_matched, _, nice_score = self._score_skills_precomputed(jd.nice_to_have_skills, nice_jd_embs, candidate, max_points=WEIGHTS['nice_to_have_skills'])
+        behavioral_score = self._score_behavioral(candidate)
+        location_score = self._score_location(candidate, jd)
+        notice_score = self._score_notice_period(candidate, jd)
+        disqualifiers_hit, disq_penalty = self._check_disqualifiers(candidate, jd)
+        total = must_score + exp_score + nice_score + behavioral_score + location_score + notice_score - disq_penalty
+        return {
+            'total': round(total, 2),
+            'must_score': must_score,
+            'exp_score': exp_score,
+            'nice_score': nice_score,
+            'behavioral_score': behavioral_score,
+            'location_score': location_score,
+            'notice_score': notice_score,
+            'disq_penalty': disq_penalty,
+            'must_matched': must_matched,
+            'must_missing': must_missing,
+            'nice_matched': nice_matched,
+            'disqualifiers_hit': disqualifiers_hit
+        }
 
     def _score_candidate(self, candidate: Candidate, jd: JDExtractionResult) -> RankedCandidate:
         must_matched, must_missing, must_score = self._score_skills(jd.must_have_skills, candidate, max_points=WEIGHTS['must_have_skills'])
@@ -55,19 +181,19 @@ class CandidateRankingService:
 
     def _encode_texts(self, texts: list[str]) -> np.ndarray:
         if not texts:
-            return np.zeros((0, self._embedder.get_sentence_embedding_dimension()), dtype=np.float32)
+            return np.zeros((0, self._embedder.get_embedding_dimension()), dtype=np.float32)
         return np.array(self._embedder.encode(texts, convert_to_numpy=True, normalize_embeddings=True), dtype=np.float32)
 
     def _ensure_candidate_embeddings(self, candidate: Candidate) -> np.ndarray:
         if candidate.skill_embeddings is not None:
-            return np.array(candidate.skill_embeddings, dtype=np.float32).reshape(-1, self._embedder.get_sentence_embedding_dimension())
+            return np.array(candidate.skill_embeddings, dtype=np.float32).reshape(-1, self._embedder.get_embedding_dimension())
         skill_names = []
         if candidate.skills:
             skill_names.extend([s.name for s in candidate.skills if s.name])
         if candidate.summary:
             skill_names.append(candidate.summary)
         if not skill_names:
-            return np.zeros((0, self._embedder.get_sentence_embedding_dimension()))
+            return np.zeros((0, self._embedder.get_embedding_dimension()))
         embeddings = self._encode_texts(skill_names)
         candidate.skill_embeddings = embeddings.flatten().tolist()
         return embeddings
@@ -77,6 +203,25 @@ class CandidateRankingService:
         cand_embeddings = self._ensure_candidate_embeddings(candidate)
         if jd_embeddings.shape[0] == 0:
             return ([], [], max_points)
+        if cand_embeddings.shape[0] == 0:
+            return ([], jd_skills, 0.0)
+        sim_matrix = util.cos_sim(jd_embeddings, cand_embeddings).numpy()
+        matched: list[str] = []
+        missing: list[str] = []
+        for idx, jd_skill in enumerate(jd_skills):
+            best_sim = float(sim_matrix[idx].max()) if sim_matrix.shape[1] > 0 else 0.0
+            if best_sim >= 0.7:
+                matched.append(jd_skill)
+            else:
+                missing.append(jd_skill)
+        coverage = len(matched) / len(jd_skills) if jd_skills else 1.0
+        score = max_points * coverage
+        return (matched, missing, score)
+
+    def _score_skills_precomputed(self, jd_skills: list[str], jd_embeddings: np.ndarray, candidate: Candidate, max_points: float) -> tuple[list[str], list[str], float]:
+        if jd_embeddings.shape[0] == 0:
+            return ([], [], max_points)
+        cand_embeddings = self._ensure_candidate_embeddings(candidate)
         if cand_embeddings.shape[0] == 0:
             return ([], jd_skills, 0.0)
         sim_matrix = util.cos_sim(jd_embeddings, cand_embeddings).numpy()

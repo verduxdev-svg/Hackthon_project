@@ -1,57 +1,77 @@
 import json
 import logging
+import csv
 from pathlib import Path
 from app.core.config import get_settings
 from app.models.ranking_models import Candidate
 logger = logging.getLogger(__name__)
 
-class CandidateLoaderService:
+class LazyCandidateList:
+    def __init__(self, filepath: Path):
+        self.filepath = filepath
+        self._count = None
 
-    def __init__(self):
-        self.settings = get_settings()
-        self._candidates: list[Candidate] = []
-        self._loaded = False
-
-    def load(self) -> list[Candidate]:
-        if self._loaded:
-            return self._candidates
-        candidates_path = Path(self.settings.CANDIDATES_FILE)
-        if not candidates_path.exists():
-            logger.warning(f"Candidates file not found at '{candidates_path}'. POST /api/rank-candidates will still work with inline candidate data.")
-            self._loaded = True
-            return []
+    def _determine_count(self) -> int:
         try:
-            suffix = candidates_path.suffix.lower()
-            raw = candidates_path.read_text(encoding='utf-8')
-            data = []
-            if suffix == '.json':
-                parsed = json.loads(raw)
-                if isinstance(parsed, dict):
-                    data = parsed.get('candidates', parsed.get('data', []))
-                elif isinstance(parsed, list):
-                    data = parsed
-            elif suffix == '.jsonl':
-                for line in raw.splitlines():
-                    if line.strip():
-                        data.append(json.loads(line))
+            suffix = self.filepath.suffix.lower()
+            if suffix == '.jsonl':
+                count = 0
+                with open(self.filepath, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if line.strip():
+                            count += 1
+                return count
             elif suffix == '.csv':
-                import csv
-                import io
-                reader = csv.DictReader(io.StringIO(raw))
+                count = 0
+                with open(self.filepath, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if line.strip():
+                            count += 1
+                return max(0, count - 1)
+            elif suffix == '.json':
+                with open(self.filepath, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        data = data.get('candidates', data.get('data', []))
+                    return len(data)
+        except Exception:
+            return 0
+        return 0
+
+    def __len__(self) -> int:
+        if self._count is None:
+            self._count = self._determine_count()
+        return self._count
+
+    def __getitem__(self, index):
+        if index < 0:
+            index = len(self) + index
+        if index < 0 or index >= len(self):
+            raise IndexError("list index out of range")
+        for idx, item in enumerate(self):
+            if idx == index:
+                return item
+        raise IndexError("list index out of range")
+
+    def __iter__(self):
+        suffix = self.filepath.suffix.lower()
+        if suffix == '.json':
+            with open(self.filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    data = data.get('candidates', data.get('data', []))
+                for c in data:
+                    yield Candidate(**c)
+        elif suffix == '.jsonl':
+            with open(self.filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.strip():
+                        yield Candidate(**json.loads(line))
+        elif suffix == '.csv':
+            with open(self.filepath, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
                 for row in reader:
-                    data.append(self._parse_csv_row(row))
-            else:
-                logger.error(f"Unsupported candidate file extension '{suffix}'. Supported: .json, .jsonl, .csv")
-                self._loaded = True
-                return []
-            self._candidates = [Candidate(**c) for c in data]
-            self._loaded = True
-            logger.info(f"Loaded {len(self._candidates)} candidates from '{candidates_path}'")
-            return self._candidates
-        except Exception as e:
-            logger.error(f"Failed to load candidates from '{candidates_path}': {e}")
-            self._loaded = True
-            return []
+                    yield Candidate(**self._parse_csv_row(row))
 
     def _parse_csv_row(self, row: dict) -> dict:
         candidate = {}
@@ -145,7 +165,27 @@ class CandidateLoaderService:
         except ValueError:
             return val
 
-    def get_candidates(self) -> list[Candidate]:
+class CandidateLoaderService:
+    def __init__(self):
+        self.settings = get_settings()
+        self._candidates = None
+        self._loaded = False
+
+    def load(self):
+        if self._loaded:
+            return self._candidates
+        candidates_path = Path(self.settings.CANDIDATES_FILE)
+        if not candidates_path.exists():
+            logger.warning(f"Candidates file not found at '{candidates_path}'.")
+            self._candidates = []
+            self._loaded = True
+            return self._candidates
+        self._candidates = LazyCandidateList(candidates_path)
+        self._loaded = True
+        logger.info(f"Initialized lazy candidates list from '{candidates_path}'")
+        return self._candidates
+
+    def get_candidates(self):
         if not self._loaded:
             return self.load()
         return self._candidates

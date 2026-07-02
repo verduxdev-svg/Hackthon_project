@@ -11,7 +11,7 @@ _jd_cache: dict[str, JDExtractionResult] = {}
 SYSTEM_PROMPT = '\nYou are an expert Technical Recruiter and Intelligence Extraction System.\nYour task is to parse a raw Job Description (JD) and extract ALL meaningful\nhiring signals into a structured JSON object.\n\nCRITICAL RULES:\n1. You MUST return ONLY a valid JSON object. No explanations, no markdown, no prose.\n2. Extract skills into TWO distinct categories:\n   - must_have_skills: Non-negotiable. Absence = candidate should be rejected.\n   - nice_to_have_skills: Preferred but not blockers.\n3. For minimum_years_experience: if a range is given (e.g., "5-9 years"),\n   use the LOWER bound as an integer. NEVER return null — use 0 if unknown.\n4. Behavioral traits: Look for culture/work-style signals (e.g., "bias for action",\n   "async-first", "comfortable with ambiguity"). These are often implicit.\n5. Disqualifiers: Extract EXPLICIT anti-patterns mentioned in the JD\n   (e.g., "no consulting-only backgrounds", "no pure research roles").\n6. Domain knowledge: Areas of expertise beyond named technologies.\n7. preferred_company_types: If the JD mentions preferring or penalizing certain company types.\n8. remote_ok: Set to true only if the JD explicitly says remote or WFH is OK.\n9. extraction_confidence: Set to "high" if the JD is detailed, "medium" if ambiguous, "low" if vague.\n\nOUTPUT JSON SCHEMA (return EXACTLY this structure):\n{\n  "job_title": "<string>",\n  "minimum_years_experience": <integer, never null, use 0 if unknown>,\n  "maximum_years_experience": <integer or null>,\n  "must_have_skills": ["<string>", ...],\n  "nice_to_have_skills": ["<string>", ...],\n  "behavioral_traits": ["<string>", ...],\n  "domain_knowledge": ["<string>", ...],\n  "disqualifiers": ["<string>", ...],\n  "preferred_locations": ["<string>", ...],\n  "remote_ok": <boolean>,\n  "preferred_notice_period_days": <integer or null>,\n  "preferred_company_types": ["<string>", ...],\n  "key_responsibilities_summary": "<2-3 sentence summary>",\n  "extraction_confidence": "<high|medium|low>"\n}\n'
 
 class JDExtractionService:
-    FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+    FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-pro']
 
     def __init__(self):
         self.settings = get_settings()
@@ -33,7 +33,7 @@ class JDExtractionService:
 
     async def _call_gemini(self, raw_jd_text: str) -> str:
         user_message = f'Extract all hiring signals from this Job Description:\n\n---BEGIN JD---\n{raw_jd_text}\n---END JD---\n\nReturn ONLY a valid JSON object matching the schema. No markdown, no prose.'
-        config = types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, temperature=self.settings.LLM_TEMPERATURE, max_output_tokens=self.settings.LLM_MAX_TOKENS, response_mime_type='application/json', thinking_config=types.ThinkingConfig(thinking_budget=0))
+        config = types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, temperature=self.settings.LLM_TEMPERATURE, max_output_tokens=self.settings.LLM_MAX_TOKENS, response_mime_type='application/json')
         primary = self.settings.GEMINI_MODEL
         models_to_try = [primary] + [m for m in self.FALLBACK_MODELS if m != primary]
         last_error = None
@@ -50,16 +50,18 @@ class JDExtractionService:
                     err_str = str(e)
                     last_error = e
                     is_retryable = '503' in err_str or 'UNAVAILABLE' in err_str or '429' in err_str or ('RESOURCE_EXHAUSTED' in err_str)
-                    if is_retryable and attempt < 3:
-                        wait = 2 ** attempt
-                        logger.warning(f'Gemini {err_str[:80]}... | model={model} | attempt={attempt} | retrying in {wait}s')
-                        await asyncio.sleep(wait)
-                        continue
                     if is_retryable:
-                        logger.warning(f'All retries exhausted for model={model}, trying fallback')
+                        if attempt < 3:
+                            wait = 5 * attempt
+                            logger.warning(f'Gemini {err_str[:80]}... | model={model} | attempt={attempt} | retrying in {wait}s')
+                            await asyncio.sleep(wait)
+                            continue
+                        else:
+                            logger.warning(f'All retries exhausted for model={model}, trying fallback')
+                            break
+                    else:
+                        logger.warning(f'Gemini non-retryable error ({err_str[:80]}) for model={model}, trying fallback')
                         break
-                    logger.error(f'Gemini non-retryable error: {e}')
-                    raise RuntimeError(f'Gemini API call failed: {e}')
         raise RuntimeError(f'Gemini unavailable across all fallback models. Last error: {last_error}')
 
     def _parse_json_response(self, raw_response: str) -> dict:

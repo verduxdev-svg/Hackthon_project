@@ -1,13 +1,25 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional
 from sentence_transformers import SentenceTransformer, util
 import hashlib
 import re
+from datetime import datetime
 
 class CandidateSkill(BaseModel):
     name: str
     proficiency: Optional[str] = None
     years: Optional[float] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def map_duration_to_years(cls, data):
+        if isinstance(data, dict):
+            if data.get('years') is None and data.get('duration_months') is not None:
+                try:
+                    data['years'] = round(float(data['duration_months']) / 12.0, 2)
+                except Exception:
+                    pass
+        return data
 
 class CareerEntry(BaseModel):
     company: Optional[str] = None
@@ -23,6 +35,21 @@ class RedrobSignals(BaseModel):
     interview_completion_rate: Optional[float] = None
     notice_period_days: Optional[int] = None
     last_active_days_ago: Optional[int] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def calculate_active_days(cls, data):
+        if isinstance(data, dict):
+            if data.get('last_active_days_ago') is None:
+                active_date_str = data.get('last_active_date')
+                if active_date_str:
+                    try:
+                        active_date = datetime.strptime(active_date_str, '%Y-%m-%d').date()
+                        today = datetime(2026, 7, 1).date()
+                        data['last_active_days_ago'] = max(0, (today - active_date).days)
+                    except Exception:
+                        pass
+        return data
 
 class CandidateProfile(BaseModel):
     years_of_experience: Optional[float] = None
@@ -40,6 +67,29 @@ class Candidate(BaseModel):
     skill_embeddings: Optional[list[float]] = None
     summary: Optional[str] = None
     redrob_signals: Optional[RedrobSignals] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_candidate(cls, data):
+        if isinstance(data, dict):
+            if not data.get('name'):
+                profile = data.get('profile')
+                if isinstance(profile, dict):
+                    data['name'] = profile.get('anonymized_name') or profile.get('name')
+            if not data.get('name'):
+                data['name'] = 'Unknown Candidate'
+            profile = data.get('profile')
+            signals = data.get('redrob_signals')
+            if isinstance(profile, dict) and isinstance(signals, dict):
+                if 'willing_to_relocate' not in profile and 'willing_to_relocate' in signals:
+                    profile['willing_to_relocate'] = signals['willing_to_relocate']
+            if isinstance(profile, dict) and 'education_tier' not in profile:
+                edu_list = data.get('education')
+                if isinstance(edu_list, list) and len(edu_list) > 0:
+                    first_edu = edu_list[0]
+                    if isinstance(first_edu, dict) and 'tier' in first_edu:
+                        profile['education_tier'] = first_edu['tier']
+        return data
 
     def _extract_years_regex(self, text: str) -> int | None:
         match = re.search('(\\d+)\\s+years?', text, re.IGNORECASE)

@@ -7,6 +7,7 @@ import re
 from google import genai
 from google.genai import types
 from app.core.config import get_settings
+# pyrefly: ignore [missing-import]
 from app.models.candidate_models import Candidate
 logger = logging.getLogger(__name__)
 _candidate_cache: dict[str, Candidate] = {}
@@ -35,7 +36,7 @@ class CandidateExtractionService:
             for attempt in range(1, 4):
                 try:
                     logger.info(f'Gemini candidate call | model={model} | attempt={attempt}')
-                    response = await self.client.aio.models.generate_content(model=model, contents=f'Extract the following resume:\n\n{raw_resume_text}\n\nReturn ONLY valid JSON.', config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, temperature=0.0, max_output_tokens=4096, response_mime_type='application/json', thinking_config=types.ThinkingConfig(thinking_budget=0)))
+                    response = await self.client.aio.models.generate_content(model=model, contents=f'Extract the following resume:\n\n{raw_resume_text}\n\nReturn ONLY valid JSON.', config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, temperature=0.0, max_output_tokens=4096, response_mime_type='application/json'))
                     response_content = response.text
                     if not response_content:
                         raise ValueError('Gemini returned an empty response.')
