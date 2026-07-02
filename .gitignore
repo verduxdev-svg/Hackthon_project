@@ -9,5 +9,4 @@ venv/
 dist/
 build/
 .DS_Store
-*.csv
 data/*.jsonl
