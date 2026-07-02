@@ -60,7 +60,12 @@ async def extract_from_file(file: UploadFile=File(..., description='Upload a .do
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
 
+@router.post('/clear-jd-cache', status_code=status.HTTP_200_OK, summary='Clear the parsed JD cache', tags=['JD Extraction'])
+async def clear_jd_cache(request: Request, service: JDExtractionService=Depends(get_extraction_service)):
+    service.clear_cache()
+    return JSONResponse(content={'status': 'success', 'message': 'JD extraction cache cleared successfully.'})
+
 @router.get('/health', status_code=status.HTTP_200_OK, summary='Service health check', tags=['Health'])
 async def health_check(settings: Settings=Depends(get_settings)):
     api_key_configured = bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != 'YOUR_GEMINI_API_KEY_HERE')
-    return JSONResponse(content={'status': 'healthy', 'phase': 'Phase 2 — AI Candidate Ranking', 'model': settings.GEMINI_MODEL, 'gemini_api_key_configured': api_key_configured, 'endpoints': {'extract_text': 'POST /api/extract-jd', 'extract_file': 'POST /api/extract-jd/file', 'rank_candidates': 'POST /api/rank-from-preloaded', 'docs': 'GET /docs'}})
+    return JSONResponse(content={'status': 'healthy', 'phase': 'Phase 2 — AI Candidate Ranking', 'model': settings.GEMINI_MODEL, 'gemini_api_key_configured': api_key_configured, 'endpoints': {'extract_text': 'POST /api/extract-jd', 'extract_file': 'POST /api/extract-jd/file', 'rank_candidates': 'POST /api/rank-from-preloaded', 'docs': 'GET /docs', 'clear_cache': 'POST /api/clear-jd-cache'}})

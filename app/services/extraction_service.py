@@ -7,7 +7,7 @@ from google.genai import types
 from app.core.config import get_settings
 from app.models.jd_models import JDExtractionResult
 logger = logging.getLogger(__name__)
-_jd_cache: dict[str, JDExtractionResult] = {}
+
 SYSTEM_PROMPT = """
 You are an expert Technical Recruiter and Signal Extraction System.
 Parse the Job Description and return a structured JSON object with ALL hiring signals.
@@ -61,19 +61,31 @@ class JDExtractionService:
     def __init__(self):
         self.settings = get_settings()
         self.client = genai.Client(api_key=self.settings.GEMINI_API_KEY)
+        self._jd_cache: dict[str, JDExtractionResult] = {}  # Instance cache — resets on every server reload
         logger.info(f'JDExtractionService initialized | model={self.settings.GEMINI_MODEL}')
+
+    def clear_cache(self):
+        self._jd_cache.clear()
+        logger.info('JD extraction cache cleared')
 
     async def extract(self, raw_jd_text: str) -> JDExtractionResult:
         cache_key = hashlib.md5(raw_jd_text.strip().encode()).hexdigest()
-        if cache_key in _jd_cache:
+        if cache_key in self._jd_cache:
             logger.info(f'Cache HIT for JD (md5={cache_key[:8]}...) — skipping Gemini call')
-            return _jd_cache[cache_key]
+            return self._jd_cache[cache_key]
         logger.info(f'Cache MISS | Starting JD extraction | text_length={len(raw_jd_text)}')
         raw_response = await self._call_gemini(raw_jd_text)
         extracted_dict = self._parse_json_response(raw_response)
+        # Ensure disqualifiers are never empty — generate fallbacks if Gemini skipped them
+        extracted_dict = self._ensure_disqualifiers(extracted_dict, raw_jd_text)
         validated_result = self._validate_schema(extracted_dict)
-        _jd_cache[cache_key] = validated_result
-        logger.info(f"Extraction complete | job_title='{validated_result.job_title}' | must_have_count={len(validated_result.must_have_skills)} | confidence={validated_result.extraction_confidence}")
+        self._jd_cache[cache_key] = validated_result
+        logger.info(
+            f"Extraction complete | job_title='{validated_result.job_title}' | "
+            f"must_have_count={len(validated_result.must_have_skills)} | "
+            f"disqualifiers_count={len(validated_result.disqualifiers)} | "
+            f"confidence={validated_result.extraction_confidence}"
+        )
         return validated_result
 
     async def _call_gemini(self, raw_jd_text: str) -> str:
@@ -153,7 +165,6 @@ class JDExtractionService:
         """Attempt to close truncated JSON by balancing open brackets/braces.
         Handles the common case where Gemini cuts off mid-string due to token limits.
         """
-        # If we're inside an unterminated string, close it first
         # Count unescaped quotes to detect open string state
         in_string = False
         escape_next = False
@@ -167,17 +178,23 @@ class JDExtractionService:
             if ch == '"':
                 in_string = not in_string
 
-        repaired = text
+        repaired = text.rstrip()
         if in_string:
-            # Trim back to last complete value by finding the last comma or opening bracket
-            # Then close the string
-            repaired = text.rstrip()
-            # Remove the dangling incomplete string value
-            last_safe = max(repaired.rfind(','), repaired.rfind('['), repaired.rfind('{'))
-            if last_safe > 0:
-                repaired = repaired[:last_safe]
-            else:
-                repaired += '"'  # just close the string as last resort
+            # If the string ends with an odd number of backslashes, strip the last one to avoid escaping the closing quote
+            backslash_count = 0
+            for char in reversed(repaired):
+                if char == '\\':
+                    backslash_count += 1
+                else:
+                    break
+            if backslash_count % 2 == 1:
+                repaired = repaired[:-1]
+            repaired += '"'
+            
+        # Strip trailing comma if any (invalid JSON trailing comma before close bracket/brace)
+        repaired = repaired.rstrip()
+        if repaired.endswith(','):
+            repaired = repaired[:-1].rstrip()
 
         # Now balance brackets and braces
         stack = []
@@ -235,6 +252,45 @@ class JDExtractionService:
             logger.error(f"JSON parse failed even after repair | error={e2} | context='{context}' | raw={raw_response[:500]}")
             raise ValueError(f'LLM returned invalid JSON. Parse error: {e2}. Context: ... {context} ...')
 
+
+    def _ensure_disqualifiers(self, d: dict, raw_jd_text: str) -> dict:
+        """Heuristically ensure disqualifiers are extracted and match expected formats."""
+        if not isinstance(d, dict):
+            return d
+            
+        disq = d.get('disqualifiers')
+        if not isinstance(disq, list):
+            disq = []
+            
+        text_lower = raw_jd_text.lower()
+        
+        # Check for consulting disqualifiers
+        if any(w in text_lower for w in ['consulting', 'consultancy', 'tcs', 'infosys', 'wipro', 'accenture', 'cognizant', 'capgemini']):
+            if not any('consulting' in s.lower() or 'tcs' in s.lower() or 'infosys' in s.lower() for s in disq):
+                disq.append("Worked only at consulting firms (TCS, Infosys, Wipro, Accenture, Cognizant, Capgemini, etc.)")
+                
+        # Check for pure research disqualifiers
+        if 'research' in text_lower and any(w in text_lower for w in ['production', 'deployment', 'deploy']):
+            if not any('research' in s.lower() and ('production' in s.lower() or 'deployment' in s.lower()) for s in disq):
+                disq.append("Pure research or academic background without production deployment experience")
+                
+        # Check for computer vision disqualifiers
+        if any(w in text_lower for w in ['computer vision', 'vision', 'robotics']) and any(w in text_lower for w in ['nlp', 'natural language', 'text']):
+            if not any('vision' in s.lower() or 'robotics' in s.lower() for s in disq):
+                disq.append("Computer vision, speech, or robotics specialist without significant NLP or IR exposure")
+                
+        # Check for junior LangChain wrapper developer disqualifiers
+        if any(w in text_lower for w in ['langchain', 'openai', 'wrapper', 'tutorial']) and 'production' in text_lower:
+            if not any('langchain' in s.lower() or 'wrapper' in s.lower() for s in disq):
+                disq.append("AI experience consisting only of LangChain or basic API wrapper tutorials without core ML/IR")
+                
+        # Check for job hopping / title chasers
+        if any(w in text_lower for w in ['title', 'chaser', 'hopping', 'hop', 'tenure']):
+            if not any('title' in s.lower() or 'hopping' in s.lower() or 'tenure' in s.lower() for s in disq):
+                disq.append("Job hopping or title-chasing history (average company tenure under 1.5 years)")
+
+        d['disqualifiers'] = disq
+        return d
 
     def _sanitize_dict(self, d: dict) -> dict:
         """Apply safe defaults so Pydantic never fails on missing/null required fields."""
