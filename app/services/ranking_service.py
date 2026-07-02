@@ -6,7 +6,8 @@ from app.models.jd_models import JDExtractionResult
 from app.models.ranking_models import Candidate, RankedCandidate, RankingResponse, ScoreBreakdown
 logger = logging.getLogger(__name__)
 WEIGHTS = {'must_have_skills': 40, 'experience': 20, 'nice_to_have_skills': 15, 'behavioral': 10, 'location': 10, 'notice_period': 5}
-FUZZY_THRESHOLD = 70
+FUZZY_THRESHOLD = 75
+SEMANTIC_THRESHOLD = 0.55
 DISQUALIFIER_PENALTY = 50.0
 
 class CandidateRankingService:
@@ -86,7 +87,9 @@ class CandidateRankingService:
             chunk_scored.append((raw_data['total'], candidate, raw_data))
         running_top.extend(chunk_scored)
         running_top.sort(key=lambda x: x[0], reverse=True)
-        del running_top[max(shortlist_size * 2, 500):]
+        # Keep a generous buffer: at least 3x shortlist_size or shortlist_size+1000, whichever is larger
+        buffer_limit = max(shortlist_size * 3, shortlist_size + 1000)
+        del running_top[buffer_limit:]
         return chunk_disq
 
     def _pre_encode_candidates(self, candidates: list[Candidate]):
@@ -219,17 +222,32 @@ class CandidateRankingService:
         return (matched, missing, score)
 
     def _score_skills_precomputed(self, jd_skills: list[str], jd_embeddings: np.ndarray, candidate: Candidate, max_points: float) -> tuple[list[str], list[str], float]:
-        if jd_embeddings.shape[0] == 0:
-            return ([], [], max_points)
+        if jd_embeddings.shape[0] == 0 or not jd_skills:
+            return ([], [], max_points)  # No JD skills = full marks (can't penalise what isn't required)
+        cand_skill_names = [s.name for s in candidate.skills if s.name] if candidate.skills else []
         cand_embeddings = self._ensure_candidate_embeddings(candidate)
-        if cand_embeddings.shape[0] == 0:
-            return ([], jd_skills, 0.0)
-        sim_matrix = util.cos_sim(jd_embeddings, cand_embeddings).numpy()
         matched: list[str] = []
         missing: list[str] = []
         for idx, jd_skill in enumerate(jd_skills):
-            best_sim = float(sim_matrix[idx].max()) if sim_matrix.shape[1] > 0 else 0.0
-            if best_sim >= 0.7:
+            # Semantic similarity check
+            semantic_match = False
+            if cand_embeddings.shape[0] > 0:
+                jd_emb = jd_embeddings[idx].reshape(1, -1)
+                sims = util.cos_sim(jd_emb, cand_embeddings).numpy()[0]
+                best_sim = float(sims.max()) if len(sims) > 0 else 0.0
+                semantic_match = best_sim >= SEMANTIC_THRESHOLD
+            # Fuzzy string fallback — catches exact/near-exact name matches
+            fuzzy_match = False
+            if not semantic_match and cand_skill_names:
+                best_fuzzy = process.extractOne(jd_skill, cand_skill_names, scorer=fuzz.token_set_ratio)
+                if best_fuzzy and best_fuzzy[1] >= FUZZY_THRESHOLD:
+                    fuzzy_match = True
+                # Also check summary text
+                elif candidate.summary:
+                    ratio = fuzz.partial_ratio(jd_skill.lower(), candidate.summary.lower())
+                    if ratio >= 80:
+                        fuzzy_match = True
+            if semantic_match or fuzzy_match:
                 matched.append(jd_skill)
             else:
                 missing.append(jd_skill)

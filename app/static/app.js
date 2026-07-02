@@ -159,17 +159,40 @@ async function processJdFile(file) {
     fd.append('file', file);
     try {
         const res = await fetch('/api/extract-jd/file', { method: 'POST', body: fd });
-        if (!res.ok) throw new Error();
+        if (!res.ok) {
+            let errMsg = `Server error ${res.status}`;
+            try {
+                const errBody = await res.json();
+                // Handle FastAPI detail which can be a string or object
+                if (typeof errBody.detail === 'string') {
+                    errMsg = errBody.detail;
+                } else if (errBody.detail?.message) {
+                    errMsg = errBody.detail.message;
+                } else if (errBody.message) {
+                    errMsg = errBody.message;
+                }
+            } catch { /* ignore parse error on error body */ }
+
+            if (res.status === 429) {
+                setStatus(jdFileStatus, 'error', `<i class="fa-solid fa-clock"></i> Rate limited — please wait a moment and try again`);
+            } else if (res.status === 502) {
+                setStatus(jdFileStatus, 'error', `<i class="fa-solid fa-hourglass-half"></i> AI quota exhausted across all models — wait 1-2 minutes and try again`);
+            } else {
+                setStatus(jdFileStatus, 'error', `<i class="fa-solid fa-triangle-exclamation"></i> ${errMsg}`);
+            }
+            return;
+        }
         const result = await res.json();
 
         rawJdText = result.extracted_raw_text || '';
 
         setStatus(jdFileStatus, 'success', `<i class="fa-solid fa-circle-check"></i> ${file.name} — intelligence extracted`);
         showExtractionPanel(result);
-    } catch {
-        setStatus(jdFileStatus, 'error', `<i class="fa-solid fa-triangle-exclamation"></i> Failed to parse file`);
+    } catch (err) {
+        setStatus(jdFileStatus, 'error', `<i class="fa-solid fa-triangle-exclamation"></i> Failed to parse file — ${err.message || 'Network error'}`);
     }
 }
+
 
 
 setupDropZone(candidateDropZone, candidateFileInput, files => {
@@ -329,7 +352,7 @@ runBtn.addEventListener('click', async () => {
         return;
     }
 
-    const shortlistSize = Math.min(Math.max(parseInt(shortlistSizeInput.value, 10) || 10, 1), 50);
+    const shortlistSize = Math.min(Math.max(parseInt(shortlistSizeInput.value, 10) || 10, 1), 10000);
 
     sectionResults.classList.remove('hidden');
     loadingState.classList.remove('hidden');

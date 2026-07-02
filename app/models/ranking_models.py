@@ -100,7 +100,7 @@ class Candidate(BaseModel):
 class RankingRequest(BaseModel):
     raw_jd_text: str = Field(..., min_length=50, description='Raw job description text. Will be extracted then used to rank candidates.')
     candidates: list[Candidate] = Field(..., description='List of candidate objects to rank.')
-    shortlist_size: Optional[int] = Field(default=10, ge=1, le=50, description='How many top candidates to include in the shortlist.')
+    shortlist_size: Optional[int] = Field(default=10, ge=1, le=10000, description='How many top candidates to include in the shortlist.')
 
 class ScoreBreakdown(BaseModel):
     must_have_skills_score: float = Field(description='0-40 points: core skill match')
