@@ -9,6 +9,5 @@ venv/
 dist/
 build/
 .DS_Store
-output/
 *.csv
 data/*.jsonl
